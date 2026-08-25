@@ -1,104 +1,102 @@
 export default async function handler(req, res) {
   try {
-    const photoPage =
-      "http://www.wretch.cc/album/show.php?i=BaBy217&b=2&f=1060718966&p=0&sp=0";
+    const baseThumb =
+      "http://f12.wretch.yimg.com/baby217/2/thumbs/t1060718966.jpg";
 
-    const cdx =
-      "https://web.archive.org/cdx/search/cdx" +
-      "?url=" + encodeURIComponent(photoPage) +
-      "&output=json" +
-      "&filter=statuscode:200" +
-      "&fl=timestamp,original,statuscode,mimetype,digest" +
-      "&collapse=digest";
+    // 依舊無名常見路徑，先測縮圖與幾種可能原圖
+    const candidates = [
+      baseThumb,
 
-    const calendarUrl =
-      "https://web.archive.org/web/*/" + photoPage;
+      // 移除 thumbs/t
+      "http://f12.wretch.yimg.com/baby217/2/1060718966.jpg",
 
-    async function fetchWithRetry(url, tries = 3) {
-      let lastStatus = 0;
+      // 保留 t 但移除 thumbs
+      "http://f12.wretch.yimg.com/baby217/2/t1060718966.jpg"
+    ];
 
-      for (let i = 0; i < tries; i++) {
-        const r = await fetch(url, {
+    async function checkWayback(imageUrl) {
+      const controller = new AbortController();
+
+      const timer = setTimeout(() => {
+        controller.abort();
+      }, 7000);
+
+      try {
+        // 使用較輕量的 Wayback availability API
+        const api =
+          "https://archive.org/wayback/available" +
+          "?url=" + encodeURIComponent(imageUrl) +
+          "&timestamp=20131227";
+
+        const response = await fetch(api, {
           headers: {
             "User-Agent": "Mozilla/5.0"
-          }
+          },
+          signal: controller.signal
         });
 
-        lastStatus = r.status;
+        clearTimeout(timer);
 
-        if (r.ok) return r;
-
-        // 503 / 502 / 429 才重試
-        if (![429, 502, 503].includes(r.status)) {
-          return r;
+        if (!response.ok) {
+          return {
+            imageUrl,
+            found: false,
+            status: response.status
+          };
         }
 
-        await new Promise(resolve =>
-          setTimeout(resolve, 1000 + i * 1000)
-        );
+        const data = await response.json();
+
+        const closest =
+          data &&
+          data.archived_snapshots &&
+          data.archived_snapshots.closest;
+
+        if (!closest || !closest.available) {
+          return {
+            imageUrl,
+            found: false
+          };
+        }
+
+        return {
+          imageUrl,
+          found: true,
+          timestamp: closest.timestamp,
+          archivedUrl: closest.url
+        };
+
+      } catch (error) {
+        clearTimeout(timer);
+
+        return {
+          imageUrl,
+          found: false,
+          error:
+            error.name === "AbortError"
+              ? "查詢超過 7 秒"
+              : error.message
+        };
       }
-
-      return {
-        ok: false,
-        status: lastStatus
-      };
     }
 
-    const cdxRes = await fetchWithRetry(cdx, 3);
+    // 三個一起查，不要一個一個慢慢等
+    const results = await Promise.all(
+      candidates.map(checkWayback)
+    );
 
-    if (!cdxRes.ok) {
-      return res.status(200).json({
-        ok: false,
-        temporary: true,
-        step: "cdx",
-        error: "Wayback 查詢服務目前比較忙，請稍後再試",
-        status: cdxRes.status,
-        photoPage,
-        calendarUrl
-      });
-    }
-
-    const text = await cdxRes.text();
-
-    let rows;
-
-    try {
-      rows = JSON.parse(text);
-    } catch {
-      return res.status(200).json({
-        ok: false,
-        step: "cdx",
-        error: "Wayback 回傳資料格式異常",
-        calendarUrl
-      });
-    }
-
-    if (!Array.isArray(rows) || rows.length <= 1) {
-      return res.status(200).json({
-        ok: true,
-        photoPage,
-        snapshotCount: 0,
-        message: "這張照片頁沒有找到保存紀錄",
-        calendarUrl,
-        snapshots: []
-      });
-    }
-
-    const snapshots = rows.slice(1).map(row => ({
-      timestamp: row[0],
-      original: row[1],
-      status: row[2],
-      mimetype: row[3],
-      archivedPage:
-        `https://web.archive.org/web/${row[0]}id_/${row[1]}`
-    }));
+    const recovered = results.filter(x => x.found);
 
     return res.status(200).json({
       ok: true,
-      photoPage,
-      snapshotCount: snapshots.length,
-      snapshots,
-      calendarUrl
+
+      testedCount: results.length,
+
+      recoveredCount: recovered.length,
+
+      results,
+
+      recovered
     });
 
   } catch (error) {
