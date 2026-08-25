@@ -1,41 +1,19 @@
 export default async function handler(req,res){
   try{
-    const url=String(req.query.url||"");
-    const date=String(req.query.date||"");
-    if(!url||!/^\d{8}$/.test(date)) return res.status(400).end();
-
-    let parsed;
-    try{parsed=new URL(url)}catch{return res.status(400).end()}
-    if(!/(^|\.)wretch\.yimg\.com$/i.test(parsed.hostname)) return res.status(403).end();
-
-    const c1=new AbortController(),t1=setTimeout(()=>c1.abort(),5000);
-    let av;
-    try{
-      av=await fetch("https://archive.org/wayback/available?url="+encodeURIComponent(url)+"&timestamp="+date,{
-        headers:{"User-Agent":"YouthTimeMachine/1.3"},
-        signal:c1.signal
-      });
-      clearTimeout(t1);
-    }catch{clearTimeout(t1);return res.status(404).end()}
-
-    if(!av.ok) return res.status(404).end();
-    const ad=await av.json(),hit=ad?.archived_snapshots?.closest;
-    if(!hit?.available||!hit.timestamp) return res.status(404).end();
-
-    const archived=`https://web.archive.org/web/${hit.timestamp}id_/${url}`;
-    const c2=new AbortController(),t2=setTimeout(()=>c2.abort(),6500);
-    let r;
-    try{
-      r=await fetch(archived,{headers:{"User-Agent":"Mozilla/5.0"},redirect:"follow",signal:c2.signal});
-      clearTimeout(t2);
-    }catch{clearTimeout(t2);return res.status(404).end()}
-
+    const {url,ts}=req.query;
+    if(!url||!ts)return res.status(400).json({error:"缺少圖片參數"});
+    if(!/^\d{14}$/.test(String(ts)))return res.status(400).json({error:"時間格式不正確"});
+    let parsed;try{parsed=new URL(String(url))}catch{return res.status(400).json({error:"圖片網址不正確"})}
+    const host=parsed.hostname.toLowerCase();
+    if(!/(^|\.)wretch\.yimg\.com$/.test(host))return res.status(403).json({error:"不允許的圖片來源"});
+    const archived=`https://web.archive.org/web/${ts}id_/${url}`;
+    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),10000);
+    const r=await fetch(archived,{headers:{"User-Agent":"Mozilla/5.0"},redirect:"follow",signal:controller.signal});
+    clearTimeout(timer);
     const ct=r.headers.get("content-type")||"";
-    if(!r.ok||!ct.startsWith("image/")) return res.status(404).end();
-
-    const buf=Buffer.from(await r.arrayBuffer());
-    res.setHeader("Content-Type",ct);
-    res.setHeader("Cache-Control","public, max-age=86400, s-maxage=86400");
-    return res.status(200).send(buf);
-  }catch{return res.status(404).end()}
+    if(!r.ok||!ct.startsWith("image/"))return res.status(404).json({error:"這張照片目前無法讀取"});
+    const buffer=Buffer.from(await r.arrayBuffer());
+    res.setHeader("Content-Type",ct);res.setHeader("Cache-Control","public,max-age=86400");
+    return res.status(200).send(buffer);
+  }catch(e){return res.status(502).json({error:e?.name==="AbortError"?"照片讀取逾時":"照片讀取失敗"})}
 }
