@@ -24,38 +24,67 @@ module.exports = async function handler(req,res){
     "&limit=400"+
     "&gzip=false";
 
-  try{
+  const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+
+  async function fetchCDX(attempt){
     const controller=new AbortController();
-    const timer=setTimeout(()=>controller.abort(),22000);
+    // 第一次不要等太久；重試時再多給一點時間
+    const timeout=attempt===1 ? 8500 : 11000;
+    const timer=setTimeout(()=>controller.abort(),timeout);
 
-    const r=await fetch(q,{
-      headers:{
-        "Accept":"application/json",
-        "User-Agent":"YouthTimeMachine/1.0"
-      },
-      signal:controller.signal
-    });
-
-    clearTimeout(timer);
-
-    if(!r.ok){
-      return res.status(502).json({
-        error:"Internet Archive 回應失敗",
-        status:r.status,
-        calendarUrl
-      });
-    }
-
-    const text=await r.text();
-    let data;
     try{
-      data=JSON.parse(text);
-    }catch{
+      const r=await fetch(q,{
+        headers:{
+          "Accept":"application/json",
+          "User-Agent":"YouthTimeMachine/1.1"
+        },
+        signal:controller.signal
+      });
+      clearTimeout(timer);
+
+      // 這幾種通常是 Archive 暫時忙，值得重試
+      if([429,500,502,503,504].includes(r.status)){
+        return {retry:true,status:r.status};
+      }
+
+      if(!r.ok){
+        return {ok:false,status:r.status};
+      }
+
+      const text=await r.text();
+      try{
+        return {ok:true,data:JSON.parse(text)};
+      }catch{
+        return {retry:true,status:"parse"};
+      }
+    }catch(e){
+      clearTimeout(timer);
+      if(e?.name==="AbortError"){
+        return {retry:true,status:"timeout"};
+      }
+      return {retry:true,status:"network"};
+    }
+  }
+
+  try{
+    let result=await fetchCDX(1);
+
+    if(result.retry){
+      // 短暫停一下再試一次，避免第一次 503/timeout 就直接判定卡住
+      await sleep(650);
+      result=await fetchCDX(2);
+    }
+
+    if(!result.ok){
       return res.status(502).json({
-        error:"Archive 沒有回傳可解析資料",
+        error:"Internet Archive 暫時無法完成查詢",
+        status:result.status,
+        temporary:true,
         calendarUrl
       });
     }
+
+    const data=result.data;
 
     if(!Array.isArray(data)||data.length<=1){
       return res.status(200).json({
@@ -93,6 +122,9 @@ module.exports = async function handler(req,res){
       months[x.month].push(x);
     }
 
+    // 讓 Vercel/CDN 暫存成功結果 10 分鐘，減少同一查詢一直打 Archive
+    res.setHeader("Cache-Control","s-maxage=600, stale-while-revalidate=3600");
+
     return res.status(200).json({
       found:days.length>0,
       year,
@@ -103,9 +135,8 @@ module.exports = async function handler(req,res){
 
   }catch(e){
     return res.status(502).json({
-      error:e?.name==="AbortError"
-        ?"查詢超過 22 秒，自動停止"
-        :"查詢發生錯誤",
+      error:"Internet Archive 暫時無法完成查詢",
+      temporary:true,
       calendarUrl
     });
   }
