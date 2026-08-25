@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Youth Time Machine V61 merged-cassette-player + mobile-mini-player -->
+<!-- Youth Time Machine V62 merged-player-no-music-paths -->
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
@@ -1606,12 +1606,7 @@ function openWaybackDirect(){
   window.open(url,"_blank","noopener,noreferrer");
 }
 
-const ytmPlaylist = [
-  { title:"Peaceful Drift", src:"/music/peaceful-drift.mp3" },
-  { title:"Color Of A Soul", src:"/music/color-of-a-soul.mp3" },
-  { title:"Still Life", src:"/music/still-life.mp3" },
-  { title:"Into The Mist", src:"/music/into-the-mist.mp3" }
-];
+const ytmPlaylist = [];
 
 let ytmTrackIndex = 0;
 let ytmMusicReady = false;
@@ -1675,6 +1670,13 @@ function loadTrack(index,autoplay=true){
   const mobileName=document.getElementById("mobileTrackName");
   if(!audio)return;
 
+  if(!ytmPlaylist.length){
+    if(name)name.textContent="memory tape";
+    if(mobileName)mobileName.textContent="memory tape";
+    ytmMusicReady=false;
+    return;
+  }
+
   ytmTrackIndex=(index+ytmPlaylist.length)%ytmPlaylist.length;
   const track=ytmPlaylist[ytmTrackIndex];
 
@@ -1694,7 +1696,14 @@ function loadTrack(index,autoplay=true){
 function toggleMusic(){
   const audio=document.getElementById("bgmAudio");
   const name=document.getElementById("trackName");
+  const mobileName=document.getElementById("mobileTrackName");
   if(!audio)return;
+
+  if(!ytmPlaylist.length){
+    if(name)name.textContent="♪ music coming soon";
+    if(mobileName)mobileName.textContent="music coming soon";
+    return;
+  }
 
   if(!ytmMusicReady)loadTrack(0,false);
 
