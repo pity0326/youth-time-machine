@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Youth Time Machine V51 clean equal-action layout -->
+<!-- Youth Time Machine V52 account quick-check -->
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
@@ -519,6 +519,30 @@ input[type=text]:focus{border-color:#4f6840}
   }
 }
 
+
+/* V52：忘記帳號快速排查 */
+.account-check-btn{
+  margin-top:8px;
+  padding:8px 12px;
+  border:1px solid rgba(76,65,48,.28);
+  border-radius:6px;
+  background:rgba(255,255,255,.5);
+  color:inherit;
+  font:inherit;
+  font-size:13px;
+  cursor:pointer;
+}
+.account-check-result{
+  margin-top:8px;
+  padding:11px 13px;
+  border:1px dashed rgba(76,65,48,.28);
+  border-radius:6px;
+  background:rgba(255,255,255,.28);
+  font-size:13px;
+  line-height:1.75;
+}
+.account-check-result strong{font-weight:700}
+
 </style>
 </head>
 <body>
@@ -591,6 +615,10 @@ input[type=text]:focus{border-color:#4f6840}
       </div>
 
       <input id="username" type="text" placeholder="輸入你的無名帳號" autocomplete="off">
+
+<button type="button" id="accountCheckBtn" class="account-check-btn" onclick="checkWretchAccount()">🔎 忘記帳號？快速排查</button>
+<div id="accountCheckResult" class="account-check-result" style="display:none"></div>
+
       <button type="button" class="account-help-btn" onclick="toggleAccountHelp()">🤔 忘記以前的無名帳號？</button>
 
       <div id="accountHelp" class="help-panel">
@@ -1365,6 +1393,56 @@ function openWaybackDirect(){
   const target=`wretch.cc/${t}/${u}`;
   const url=`https://web.archive.org/web/${y}0000000000*/${target}`;
   window.open(url,"_blank","noopener,noreferrer");
+}
+
+
+async function checkWretchAccount(){
+  const input=document.getElementById("username");
+  const result=document.getElementById("accountCheckResult");
+  const btn=document.getElementById("accountCheckBtn");
+  const u=(input?.value||"").trim();
+
+  const checkedType=document.querySelector('input[name="type"]:checked');
+  const selectType=document.getElementById("type");
+  const t=checkedType?.value || selectType?.value || "album";
+
+  if(!u){
+    alert("先輸入你記得的無名帳號，再幫你快速排查。");
+    return;
+  }
+
+  result.style.display="block";
+  result.innerHTML="⏳ 正在快速排查這個帳號是否有 Wayback 保存線索…";
+  if(btn)btn.disabled=true;
+
+  try{
+    const r=await fetch(
+      `/api/year-part?username=${encodeURIComponent(u)}&type=${encodeURIComponent(t)}&year=2012&accountCheck=1`,
+      {cache:"no-store"}
+    );
+
+    if(!r.ok)throw new Error("check failed");
+    const d=await r.json();
+
+    if(d?.hasEvidence){
+      const yrs=(d.years||[]).length ? `目前找到的保存年份線索：<strong>${d.years.join("、")}</strong><br>` : "";
+      result.innerHTML=
+        `✅ <strong>有找到這個帳號的保存線索</strong><br>`+
+        yrs+
+        `這個帳號很可能是你要找的，可以再選年份搭上時光機。`;
+    }else{
+      result.innerHTML=
+        `⚠️ <strong>快速排查暫時找不到保存線索</strong><br>`+
+        `可能原因：帳號拼錯、這個帳號沒有被 Wayback 保存、你選的類型不對，或 Internet Archive 當下沒有正常回傳。<br>`+
+        `建議先檢查英文字母、數字、底線，或改試「相簿／網誌／留言板」。`;
+    }
+  }catch{
+    result.innerHTML=
+      `📡 <strong>這次無法完成快速排查</strong><br>`+
+      `Internet Archive 可能較忙，這不代表帳號一定不存在，可以稍後再試。`;
+  }finally{
+    if(btn)btn.disabled=false;
+  }
 }
 
 </script>
