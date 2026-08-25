@@ -5,23 +5,23 @@ function redisConfig(){
 }
 async function redis(cfg,path){
   const r=await fetch(cfg.url+path,{headers:{Authorization:`Bearer ${cfg.token}`},cache:"no-store"});
-  if(!r.ok) throw new Error("redis");
+  if(!r.ok)throw new Error("redis");
   return r.json();
 }
-async function savePart(cfg,key,data){
-  if(!cfg||!data?.found)return;
+async function cacheSet(cfg,key,value,ttl){
+  if(!cfg)return;
   try{
-    const raw=JSON.stringify(data);
+    const raw=JSON.stringify(value);
     await redis(cfg,`/set/${encodeURIComponent(key)}/${encodeURIComponent(raw)}`);
-    await redis(cfg,`/expire/${encodeURIComponent(key)}/7776000`);
+    await redis(cfg,`/expire/${encodeURIComponent(key)}/${ttl}`);
   }catch{}
 }
-async function availability(target,stamp,timeout=5000){
+async function availability(target,stamp,timeout=4500){
   const c=new AbortController(),tm=setTimeout(()=>c.abort(),timeout);
   try{
     const r=await fetch("https://archive.org/wayback/available?url="+
       encodeURIComponent(target)+"&timestamp="+stamp,{
-      headers:{"Accept":"application/json","User-Agent":"YouthTimeMachine/v34"},
+      headers:{"Accept":"application/json","User-Agent":"YouthTimeMachine/v35"},
       signal:c.signal,cache:"no-store"
     });
     clearTimeout(tm);
@@ -35,37 +35,42 @@ function originalFromReplay(url,fallback){
   const m=String(url||"").match(/\/web\/\d+(?:[a-z_]+)?\/(https?:\/\/.+)$/i);
   return m?.[1]||fallback;
 }
+async function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+
 module.exports=async function(req,res){
   const username=String(req.query.username||"").trim();
   const type=String(req.query.type||"");
   const year=String(req.query.year||"");
   const part=String(req.query.part||"");
+
   if(!/^[A-Za-z0-9._-]{1,80}$/.test(username))return res.status(400).json({error:"帳號格式"});
   if(!["album","blog","guestbook"].includes(type))return res.status(400).json({error:"類型"});
   if(!/^(200[3-9]|201[0-4])$/.test(year))return res.status(400).json({error:"年份"});
   if(!/^[1-4]$/.test(part))return res.status(400).json({error:"分段"});
 
   const quarter={"1":[1,2,3],"2":[4,5,6],"3":[7,8,9],"4":[10,11,12]}[part];
-  const targets=[...new Set([
-    `http://www.wretch.cc/${type}/${username}`,
-    `http://wretch.cc/${type}/${username}`,
-    `http://www.wretch.cc:80/${type}/${username}`
-  ])];
 
-  // First prove the exact path with dense day-by-day probes.
-  // Run one month at a time to avoid a huge simultaneous burst.
+  // Important V35 change:
+  // Do NOT fire 90+ Availability calls at once.
+  // Use the single canonical URL that already proved successful in diagnostics.
+  const target=`http://www.wretch.cc:80/${type}/${username}`;
+
+  const probeDays=[1,8,15,22,28];
   const hits=[];
+
+  // Small sequential batches to avoid Archive throttling.
   for(const month of quarter){
     const mm=String(month).padStart(2,"0");
-    const jobs=[];
-    for(const target of targets){
-      for(let day=1;day<=31;day++){
+
+    for(let i=0;i<probeDays.length;i+=2){
+      const pair=probeDays.slice(i,i+2);
+      const got=await Promise.all(pair.map(day=>{
         const dd=String(day).padStart(2,"0");
-        jobs.push(availability(target,`${year}${mm}${dd}`));
-      }
+        return availability(target,`${year}${mm}${dd}`);
+      }));
+      hits.push(...got.filter(Boolean));
+      await sleep(180);
     }
-    const batch=(await Promise.all(jobs)).filter(Boolean);
-    hits.push(...batch);
   }
 
   const map=new Map();
@@ -74,24 +79,41 @@ module.exports=async function(req,res){
     if(!ts.startsWith(year)||ts.length<8)continue;
     const month=Number(ts.slice(4,6));
     if(!quarter.includes(month))continue;
+
     const date=ts.slice(0,8);
     if(map.has(date))continue;
-    const original=originalFromReplay(h.url,targets[0]);
+
+    const original=originalFromReplay(h.url,target);
     map.set(date,{
-      date,month:date.slice(4,6),day:date.slice(6,8),
-      timestamp:ts,url:`https://web.archive.org/web/${ts}/${original}`
+      date,
+      month:date.slice(4,6),
+      day:date.slice(6,8),
+      timestamp:ts,
+      url:`https://web.archive.org/web/${ts}/${original}`
     });
   }
+
   const days=[...map.values()].sort((a,b)=>a.date.localeCompare(b.date));
   const months={};
   for(const d of days)(months[d.month]??=[]).push(d);
-  const result={found:days.length>0,year,part:Number(part),days,months,source:"exact-daily-availability"};
+
+  const result={
+    found:days.length>0,
+    year,
+    part:Number(part),
+    days,
+    months,
+    source:"throttled-availability",
+    target
+  };
 
   const cfg=redisConfig();
-  if(result.found){
-    await savePart(cfg,`ytm:v34:${username.toLowerCase()}:${type}:${year}:${part}`,result);
 
-    // Also merge directly into the same full-year cloud-cache key used by year-cache.js.
+  if(result.found){
+    // part cache
+    await cacheSet(cfg,`ytm:v35:${username.toLowerCase()}:${type}:${year}:${part}`,result,7776000);
+
+    // merge to full-year shared cache used by /api/year-cache
     if(cfg){
       const fullKey=`ytm:yearcloud:v1:${username.toLowerCase()}:${type}:${year}`;
       try{
@@ -103,12 +125,12 @@ module.exports=async function(req,res){
         const mergedDays=[...all.values()].sort((a,b)=>a.date.localeCompare(b.date));
         const mergedMonths={};
         for(const x of mergedDays)(mergedMonths[x.month]??=[]).push(x);
-        const full={found:true,year,days:mergedDays,months:mergedMonths,updatedAt:Date.now()};
-        const raw=JSON.stringify(full);
-        await redis(cfg,`/set/${encodeURIComponent(fullKey)}/${encodeURIComponent(raw)}`);
-        await redis(cfg,`/expire/${encodeURIComponent(fullKey)}/7776000`);
+        await cacheSet(cfg,fullKey,{
+          found:true,year,days:mergedDays,months:mergedMonths,updatedAt:Date.now()
+        },7776000);
       }catch{}
     }
   }
+
   return res.status(200).json(result);
 };
