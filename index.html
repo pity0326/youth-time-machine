@@ -537,16 +537,7 @@ input[type=text]:focus{border-color:#4f6840}
         歷史資料來自 Internet Archive 公開保存的網頁紀錄。
       </div>
       <div class="credit">青春時光機 · Created by <a href="https://www.threads.com/@pity.0326" target="_blank" rel="noopener">@pity.0326</a> ♥</div>
-    
-    <div class="note" style="margin-top:18px;text-align:left">
-      <strong>本站說明</strong><br>
-      <span class="small" style="line-height:1.8">
-        「青春時光機」並非發明 Wayback Machine，而是利用 Internet Archive 公開保存的歷史網頁紀錄，
-        重新整理成更適合搜尋無名小站的操作介面。希望讓更多人能簡單地找回，那些年留在網路上的青春。
-      </span>
-    </div>
-
-</main>
+    </main>
   </div>
 </div>
 
@@ -559,17 +550,7 @@ function toggleOlder(){older.classList.toggle("show")}
 function stopSearch(){if(activeController)activeController.abort()}
 function timer(on){clearInterval(timerId);if(!on)return;startedAt=Date.now();timerId=setInterval(()=>{const e=document.getElementById("elapsed");if(e)e.textContent=((Date.now()-startedAt)/1000).toFixed(1)},100)}
 function key(u,t,y){return`ytm:v5:${u.toLowerCase()}:${t}:${y}`}
-function cleanArchiveAccount(value){
-  return String(value||"")
-    .trim()
-    .split("?")[0]
-    .split("#")[0]
-    .replace(/\/+$/,"");
-}
-function calendar(u,t){
-  const account=encodeURIComponent(cleanArchiveAccount(u));
-  return `https://web.archive.org/web/${selectedYear}0000000000*/wretch.cc/${t}/${account}`;
-}
+function calendar(u,t){return`https://web.archive.org/web/*/http://www.wretch.cc/${t}/${encodeURIComponent(u)}`}
 function toggleAccountHelp(){document.getElementById("accountHelp").classList.toggle("show")}
 function buildShareCard(data,u,t,y){
  const labels={album:"相簿",blog:"網誌",guestbook:"留言板"};
