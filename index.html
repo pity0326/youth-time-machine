@@ -45,7 +45,69 @@ input[type=text]{width:100%;padding:16px;border:2px solid #ddd;border-radius:13p
 .share-card{padding:24px 18px;border-radius:10px;background:#f5eedf;border:1px solid #b9aa8d;text-align:center;box-shadow:inset 0 0 0 4px rgba(255,255,255,.45);font-family:Georgia,"Microsoft JhengHei",serif}
 .share-card .big{font-size:22px;font-weight:bold;margin:12px 0;color:#4e6743}.share-card .meta{font-size:14px;color:#665b4b;line-height:1.9}.share-card .brand{font-size:12px;color:#8b7a62;margin-top:16px;border-top:1px dashed #b9aa8d;padding-top:10px}
 @media(max-width:520px){.years{grid-template-columns:repeat(5,1fr)}.older{grid-template-columns:repeat(3,1fr)}.actions{grid-template-columns:1fr}.card{padding:30px 17px}h1{font-size:29px}}
-</style></head>
+</style>
+<style id="dark-wretch-home-v1">
+:root{
+  --ink:#171713;--paper:#eee1c4;--paper2:#f7edd7;--gold:#c6a35d;
+  --olive:#7f8955;--pink:#c47b82;--cream:#f4e8cb;
+}
+body{
+  background:#12120f !important;color:#eee2c7 !important;
+  font-family:"Microsoft JhengHei","PingFang TC",sans-serif !important;
+}
+body:before{
+  content:"";position:fixed;inset:0;pointer-events:none;opacity:.18;
+  background-image:repeating-linear-gradient(0deg,rgba(255,255,255,.025) 0 1px,transparent 1px 4px);
+}
+.wrap{max-width:1080px !important;padding-top:22px !important}
+.hero{
+  background:#181814 !important;border:1px dashed #8b7548 !important;
+  box-shadow:0 12px 35px rgba(0,0,0,.35) !important;
+  border-radius:4px !important;padding:26px 28px !important;
+}
+.hero h1{
+  color:#f4ead2 !important;font-family:"DFKai-SB","BiauKai","Kaiti TC","Microsoft JhengHei",serif !important;
+  font-size:42px !important;font-weight:500 !important;letter-spacing:8px !important;
+}
+.hero h1:before{content:"☆ ";color:#d1a953}.hero h1:after{content:" ☆";color:#d1a953}
+.hero .sub,.hero p{color:#d8c9a7 !important}
+.card{
+  background:#efe2c5 !important;color:#2d2921 !important;border:1px solid #9c8a65 !important;
+  border-radius:3px !important;box-shadow:8px 10px 0 rgba(0,0,0,.18) !important;
+  position:relative !important;
+}
+.card:before{
+  content:"";position:absolute;left:14px;top:18px;bottom:18px;width:18px;
+  background:radial-gradient(circle,#25251f 0 4px,transparent 5px) center top/18px 42px repeat-y;
+  opacity:.9;pointer-events:none;
+}
+.card h2,.card h3{font-family:"DFKai-SB","BiauKai","Kaiti TC","Microsoft JhengHei",serif !important;color:#29251e !important}
+input[type="text"],input[type="search"],select{
+  background:#f8eed8 !important;border:2px solid #a89875 !important;color:#332e25 !important;
+  border-radius:7px !important;
+}
+.type-btn,.year-btn,.mini-btn{
+  background:#f3e6ca !important;color:#302b22 !important;border:1px solid #b4a17c !important;
+  border-radius:6px !important;box-shadow:none !important;
+}
+.type-btn.active,.year-btn.active,.mini-btn.primary,.search-btn,button.primary{
+  background:#24231d !important;color:#f5e8ca !important;border-color:#b79550 !important;
+}
+button:hover{filter:brightness(1.08)}
+.stats,.counter,.hint,.help-box{
+  background:#1a1a16 !important;color:#e8d6ad !important;border:1px dashed #8e7443 !important;
+}
+.share-card{background:#eee2c7 !important;border-color:#9f8a64 !important;color:#302a21 !important}
+.share-card .big{color:#425d3c !important}
+.footer,footer{color:#b9aa88 !important}
+@media(max-width:700px){
+  .hero h1{font-size:30px !important;letter-spacing:4px !important}
+  .wrap{padding:10px !important}
+  .card{padding-left:34px !important}
+}
+</style>
+
+</head>
 <body><main class="card">
 <h1>🕰️ 青春時光機</h1>
 <div class="sub">找回那些年，留在網路上的青春。<br>還記得你的無名小站帳號嗎？</div>
@@ -127,7 +189,7 @@ function downloadShareCard(){
   const x=c.getContext("2d");
   x.scale(SCALE,SCALE);
 
-  const kai='"Kaiti TC","BiauKai","DFKai-SB","Microsoft JhengHei","PingFang TC",serif';
+  const kai='"BiauKai","Kaiti TC","DFKai-SB","KaiTi","STKaiti","Microsoft JhengHei",serif';
   const sans='"PingFang TC","Microsoft JhengHei","Noto Sans TC",Arial,sans-serif';
 
   // 背景：舊紙張
@@ -232,51 +294,51 @@ function downloadShareCard(){
 
   // 右側拍立得，縮小並不會壓到文字
   x.save();
-  x.translate(850,455);
+  x.translate(792,468);
   x.rotate(0.055);
 
   x.shadowColor="rgba(45,35,18,.19)";
   x.shadowBlur=15;
   x.shadowOffsetY=8;
   x.fillStyle="#fffdf6";
-  x.fillRect(-125,-135,250,300);
+  x.fillRect(-168,-172,336,392);
   x.shadowColor="transparent";
 
   // 照片天空/草地
-  const sky=x.createLinearGradient(0,-102,0,64);
+  const sky=x.createLinearGradient(0,-138,0,92);
   sky.addColorStop(0,"#73a8c5");
   sky.addColorStop(.62,"#b7d0d5");
   sky.addColorStop(1,"#d6d6a7");
   x.fillStyle=sky;
-  x.fillRect(-103,-105,206,165);
+  x.fillRect(-141,-141,282,225);
 
   x.fillStyle="#70904f";
   x.beginPath();
-  x.moveTo(-103,35);
-  x.quadraticCurveTo(0,5,103,36);
-  x.lineTo(103,60);
-  x.lineTo(-103,60);
+  x.moveTo(-141,54);
+  x.quadraticCurveTo(0,8,141,55);
+  x.lineTo(141,84);
+  x.lineTo(-141,84);
   x.closePath();
   x.fill();
 
   // 小樹
   x.fillStyle="#3f5f35";
-  x.fillRect(66,18,5,31);
-  x.beginPath();x.arc(69,16,16,0,Math.PI*2);x.fill();
+  x.fillRect(88,27,6,43);
+  x.beginPath();x.arc(91,24,22,0,Math.PI*2);x.fill();
 
   x.fillStyle="#665640";
   x.textAlign="center";
-  x.font='17px Georgia,serif';
-  x.fillText("those were the days",0,112);
+  x.font='22px Georgia,serif';
+  x.fillText("those were the days",0,151);
 
   x.restore();
 
   // 膠帶
   x.save();
-  x.translate(850,320);
+  x.translate(792,285);
   x.rotate(.06);
   x.fillStyle="rgba(207,176,103,.74)";
-  x.fillRect(-65,-13,130,26);
+  x.fillRect(-90,-17,180,34);
   x.restore();
 
   // 復古印章
