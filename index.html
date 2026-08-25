@@ -3,13 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
   <title>青春時光機｜找回你的無名小站</title>
 
   <style>
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
     body {
       margin: 0;
@@ -24,8 +21,8 @@
 
     .card {
       width: 100%;
-      max-width: 540px;
-      background: white;
+      max-width: 560px;
+      background: #fff;
       padding: 38px 25px;
       border-radius: 24px;
       box-shadow: 0 10px 35px rgba(0,0,0,.08);
@@ -52,9 +49,7 @@
       outline: none;
     }
 
-    input[type="text"]:focus {
-      border-color: #555;
-    }
+    input[type="text"]:focus { border-color: #555; }
 
     .label {
       margin: 22px 0 12px;
@@ -67,9 +62,7 @@
       gap: 9px;
     }
 
-    .choice input {
-      display: none;
-    }
+    .choice input { display: none; }
 
     .choice span {
       display: block;
@@ -85,7 +78,7 @@
     .choice input:checked + span {
       border-color: #222;
       background: #222;
-      color: white;
+      color: #fff;
     }
 
     .search-button {
@@ -95,14 +88,10 @@
       border: 0;
       border-radius: 12px;
       background: #222;
-      color: white;
+      color: #fff;
       font-size: 18px;
       font-weight: bold;
       cursor: pointer;
-    }
-
-    .search-button:hover {
-      opacity: .85;
     }
 
     .search-button:disabled {
@@ -117,9 +106,7 @@
       line-height: 1.7;
     }
 
-    #result {
-      margin-top: 26px;
-    }
+    #result { margin-top: 26px; }
 
     .result-box {
       background: #fafafa;
@@ -134,9 +121,14 @@
       margin-bottom: 10px;
     }
 
-    .years {
-      margin-top: 15px;
+    .small-text {
+      margin-top: 10px;
+      color: #777;
+      font-size: 14px;
+      line-height: 1.7;
     }
+
+    .years { margin-top: 14px; }
 
     .year-link {
       display: inline-block;
@@ -146,13 +138,13 @@
       border-radius: 10px;
       text-decoration: none;
       color: #222;
-      background: white;
+      background: #fff;
       font-weight: bold;
     }
 
     .year-link:hover {
       background: #222;
-      color: white;
+      color: #fff;
       border-color: #222;
     }
 
@@ -161,39 +153,22 @@
       margin-top: 15px;
       padding: 11px 16px;
       background: #222;
-      color: white;
+      color: #fff;
       border-radius: 10px;
       text-decoration: none;
       font-weight: bold;
     }
 
-    .small-text {
-      margin-top: 12px;
-      color: #777;
-      font-size: 14px;
-      line-height: 1.7;
-    }
-
     @media (max-width: 420px) {
-      h1 {
-        font-size: 29px;
-      }
-
-      .card {
-        padding: 32px 18px;
-      }
-
-      .choice span {
-        font-size: 14px;
-      }
+      h1 { font-size: 29px; }
+      .card { padding: 32px 18px; }
+      .choice span { font-size: 14px; }
     }
   </style>
 </head>
 
 <body>
-
   <div class="card">
-
     <h1>🕰️ 青春時光機</h1>
 
     <div class="subtitle">
@@ -201,63 +176,28 @@
       還記得你的無名小站帳號嗎？
     </div>
 
-    <input
-      id="username"
-      type="text"
-      placeholder="輸入你的無名帳號"
-      autocomplete="off"
-    >
+    <input id="username" type="text" placeholder="輸入你的無名帳號" autocomplete="off">
 
-    <div class="label">
-      你想回去哪裡？
-    </div>
+    <div class="label">你想回去哪裡？</div>
 
     <div class="choices">
-
       <label class="choice">
-        <input
-          type="radio"
-          name="type"
-          value="album"
-          checked
-        >
-        <span>
-          📷<br>
-          相簿
-        </span>
+        <input type="radio" name="type" value="album" checked>
+        <span>📷<br>相簿</span>
       </label>
 
       <label class="choice">
-        <input
-          type="radio"
-          name="type"
-          value="blog"
-        >
-        <span>
-          📝<br>
-          網誌
-        </span>
+        <input type="radio" name="type" value="blog">
+        <span>📝<br>網誌</span>
       </label>
 
       <label class="choice">
-        <input
-          type="radio"
-          name="type"
-          value="guestbook"
-        >
-        <span>
-          💬<br>
-          留言板
-        </span>
+        <input type="radio" name="type" value="guestbook">
+        <span>💬<br>留言板</span>
       </label>
-
     </div>
 
-    <button
-      id="searchButton"
-      class="search-button"
-      onclick="searchMemory()"
-    >
+    <button id="searchButton" class="search-button" onclick="searchMemory()">
       🔎 尋找我的青春
     </button>
 
@@ -265,284 +205,121 @@
 
     <div class="note">
       本網站透過 Internet Archive 尋找公開保存的歷史網頁。<br>
-      實際可查看的內容，取決於當年是否曾被網頁時光機保存。
+      實際可查看內容取決於當年是否曾被保存。
     </div>
-
   </div>
 
   <script>
-
     function getTypeName(type) {
-
-      if (type === "album") {
-        return "📷 無名相簿";
-      }
-
-      if (type === "blog") {
-        return "📝 無名網誌";
-      }
-
-      if (type === "guestbook") {
-        return "💬 無名留言板";
-      }
-
+      if (type === "album") return "📷 無名相簿";
+      if (type === "blog") return "📝 無名網誌";
+      if (type === "guestbook") return "💬 無名留言板";
       return "無名小站";
     }
 
-
     async function searchMemory() {
-
-      const username =
-        document.getElementById("username").value.trim();
-
-      const result =
-        document.getElementById("result");
-
-      const button =
-        document.getElementById("searchButton");
+      const username = document.getElementById("username").value.trim();
+      const result = document.getElementById("result");
+      const button = document.getElementById("searchButton");
 
       if (!username) {
         alert("請先輸入你的無名帳號");
         return;
       }
 
+      const type = document.querySelector('input[name="type"]:checked').value;
 
-      const type =
-        document.querySelector(
-          'input[name="type"]:checked'
-        ).value;
-
-
-      const oldUrl =
-        "http://www.wretch.cc/" +
-        type +
-        "/" +
-        encodeURIComponent(username);
-
-
-      const waybackCalendar =
-        "https://web.archive.org/web/*/" +
-        oldUrl;
-
-
-      result.innerHTML =
-        '<div class="result-box">' +
-        '🔎 正在尋找你的青春紀錄...<br>' +
-        '<div class="small-text">' +
-        '第一次搜尋可能需要一點時間' +
-        '</div>' +
-        '</div>';
-
+      result.innerHTML = `
+        <div class="result-box">
+          🔎 正在尋找你的青春紀錄...
+          <div class="small-text">正在查詢 Internet Archive</div>
+        </div>
+      `;
 
       button.disabled = true;
       button.innerText = "正在尋找...";
 
-
-      const api =
-        "https://web.archive.org/cdx/search/cdx" +
-        "?url=" +
-        encodeURIComponent(oldUrl) +
-        "&output=json" +
-        "&filter=statuscode:200" +
-        "&fl=timestamp" +
-        "&collapse=timestamp:4";
-
-
       try {
-
-        const response = await fetch(api);
-
-        if (!response.ok) {
-          throw new Error("Wayback 查詢失敗");
-        }
-
+        const response = await fetch(
+          `/api/wayback?username=${encodeURIComponent(username)}&type=${encodeURIComponent(type)}`
+        );
 
         const data = await response.json();
 
+        if (!response.ok) {
+          throw new Error(data.error || "查詢失敗");
+        }
 
-        if (!data || data.length <= 1) {
-
-          result.innerHTML =
-            '<div class="result-box">' +
-
-            '<div class="result-title">' +
-            '🥲 暫時沒有找到紀錄' +
-            '</div>' +
-
-            '<div class="small-text">' +
-            '可能是當年的頁面沒有被保存，' +
-            '也可能需要直接到 Wayback Machine 再確認一次。' +
-            '</div>' +
-
-            '<a class="wayback-button" ' +
-            'href="' +
-            waybackCalendar +
-            '" target="_blank">' +
-            '直接到網頁時光機看看' +
-            '</a>' +
-
-            '</div>';
-
+        if (!data.found) {
+          result.innerHTML = `
+            <div class="result-box">
+              <div class="result-title">🥲 暫時沒有找到紀錄</div>
+              <div class="small-text">
+                可能當年的頁面沒有被保存，也可能 Internet Archive 暫時沒有回傳資料。
+              </div>
+              <a class="wayback-button" href="${data.calendarUrl}" target="_blank" rel="noopener">
+                🕰️ 直接到網頁時光機看看
+              </a>
+            </div>
+          `;
           return;
         }
 
+        const yearButtons = data.years.map(item => `
+          <a class="year-link"
+             href="${item.url}"
+             target="_blank"
+             rel="noopener">
+            ${item.year}
+          </a>
+        `).join("");
 
-        const years = [];
+        const age = new Date().getFullYear() - Number(data.firstYear);
 
+        result.innerHTML = `
+          <div class="result-box">
+            <div class="result-title">🎉 找到你的青春了！</div>
+            <div>${getTypeName(type)}</div>
 
-        for (let i = 1; i < data.length; i++) {
+            <div class="small-text">
+              找到 ${data.years.length} 個有紀錄的年份
+            </div>
 
-          const timestamp = data[i][0];
+            <div class="years">${yearButtons}</div>
 
-          if (!timestamp) {
-            continue;
-          }
+            <div class="small-text">
+              最早紀錄：<strong>${data.firstYear} 年</strong><br>
+              距離現在大約已經 ${age} 年了 😂
+            </div>
 
-          const year =
-            timestamp.substring(0, 4);
+            <a class="wayback-button"
+               href="${data.calendarUrl}"
+               target="_blank"
+               rel="noopener">
+              查看全部歷史紀錄
+            </a>
+          </div>
+        `;
 
-
-          if (!years.includes(year)) {
-            years.push(year);
-          }
-
-        }
-
-
-        years.sort();
-
-
-        const firstYear =
-          years[0];
-
-
-        const currentYear =
-          new Date().getFullYear();
-
-
-        const age =
-          currentYear - Number(firstYear);
-
-
-        let yearButtons = "";
-
-
-        years.forEach(function(year) {
-
-          const yearUrl =
-            "https://web.archive.org/web/" +
-            year +
-            "/" +
-            oldUrl;
-
-
-          yearButtons +=
-
-            '<a class="year-link" ' +
-            'href="' +
-            yearUrl +
-            '" target="_blank">' +
-            year +
-            '</a>';
-
-        });
-
-
-        result.innerHTML =
-
-          '<div class="result-box">' +
-
-          '<div class="result-title">' +
-          '🎉 找到你的青春了！' +
-          '</div>' +
-
-          '<div>' +
-          getTypeName(type) +
-          '</div>' +
-
-          '<div class="small-text">' +
-          '找到 ' +
-          years.length +
-          ' 個有紀錄的年份' +
-          '</div>' +
-
-          '<div class="years">' +
-          yearButtons +
-          '</div>' +
-
-          '<div class="small-text">' +
-          '最早紀錄：<strong>' +
-          firstYear +
-          ' 年</strong><br>' +
-
-          '距離現在大約已經 ' +
-          age +
-          ' 年了 😂' +
-          '</div>' +
-
-          '<a class="wayback-button" ' +
-          'href="' +
-          waybackCalendar +
-          '" target="_blank">' +
-          '查看全部歷史紀錄' +
-          '</a>' +
-
-          '</div>';
-
-
-      }
-
-      catch (error) {
-
-        result.innerHTML =
-
-          '<div class="result-box">' +
-
-          '<div class="result-title">' +
-          '⚠️ 自動搜尋暫時沒有成功' +
-          '</div>' +
-
-          '<div class="small-text">' +
-          '別擔心，你還是可以直接前往 Wayback Machine 尋找。' +
-          '</div>' +
-
-          '<a class="wayback-button" ' +
-          'href="' +
-          waybackCalendar +
-          '" target="_blank">' +
-          '🕰️ 前往網頁時光機' +
-          '</a>' +
-
-          '</div>';
-
-      }
-
-      finally {
-
+      } catch (error) {
+        result.innerHTML = `
+          <div class="result-box">
+            <div class="result-title">⚠️ 查詢暫時沒有成功</div>
+            <div class="small-text">
+              這次是網站後端查詢失敗，不代表你的無名一定沒有資料。<br>
+              請稍後再試。
+            </div>
+          </div>
+        `;
+      } finally {
         button.disabled = false;
-
-        button.innerText =
-          "🔎 尋找我的青春";
-
+        button.innerText = "🔎 尋找我的青春";
       }
-
     }
 
-
-    document
-      .getElementById("username")
-      .addEventListener(
-        "keydown",
-        function(event) {
-
-          if (event.key === "Enter") {
-            searchMemory();
-          }
-
-        }
-      );
-
+    document.getElementById("username").addEventListener("keydown", function(event) {
+      if (event.key === "Enter") searchMemory();
+    });
   </script>
-
 </body>
 </html>
