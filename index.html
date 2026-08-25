@@ -796,7 +796,7 @@ async function rescuePhotos(){
       status.innerHTML="🥲 這次沒有找到可救回的照片縮圖。<br><span class='small'>不代表以前沒有照片，下面的診斷資訊可以看出卡在哪一步。</span>";
       grid.innerHTML=`<div class="photo-rescue-empty">
         <strong>照片牆診斷</strong><br>
-        相簿首頁：${dg.rootPages??0} 個可讀頁面<br>
+        可讀相簿頁：${dg.entryPages??dg.rootPages??0} 頁<br>
         找到相簿編號：${dg.bookCount??0} 本<br>
         成功讀取相簿內頁：${dg.albumPages??0} 頁<br>
         找到縮圖網址：${dg.thumbCount??0} 張<br>
