@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>青春時光機｜人工補錄</title>
+<style>
+body{font-family:"Microsoft JhengHei",sans-serif;background:#11110f;color:#eee1c3;margin:0;padding:30px}
+.box{max-width:620px;margin:auto;background:#efe2c4;color:#2f2920;padding:24px;border-radius:8px}
+input,select{width:100%;padding:12px;margin:6px 0 14px;box-sizing:border-box}
+button{padding:12px 16px;background:#536a3d;color:white;border:0;border-radius:5px;font-weight:bold;cursor:pointer}
+#result{margin-top:16px;line-height:1.7}
+.small{font-size:13px;color:#6d6250}
+</style>
+</head>
+<body>
+<div class="box">
+<h2>🕰️ 人工補錄年份</h2>
+<p class="small">只有你自己使用。當 Wayback 年曆明明看得到，但網站 API 一直抓不到時，可以把「這一年確定存在」寫進雲端索引。</p>
+
+<label>管理員密碼</label>
+<input id="key" type="password" placeholder="YTM_ADMIN_KEY">
+
+<label>無名帳號</label>
+<input id="username" value="baby217">
+
+<label>類型</label>
+<select id="type">
+<option value="album">相簿</option>
+<option value="blog">網誌</option>
+<option value="guestbook">留言板</option>
+</select>
+
+<label>年份</label>
+<input id="year" value="2012" inputmode="numeric">
+
+<label>Wayback 年曆網址（可留空）</label>
+<input id="calendarUrl" value="https://web.archive.org/web/20120000000000*/wretch.cc/album/baby217">
+
+<button onclick="save()">✅ 確認這一年有紀錄</button>
+<div id="result"></div>
+</div>
+
+<script>
+async function save(){
+  const result=document.getElementById("result");
+  result.textContent="儲存中…";
+  try{
+    const r=await fetch("/api/admin-import",{
+      method:"POST",
+      headers:{
+        "Content-Type":"application/json",
+        "X-Admin-Key":document.getElementById("key").value
+      },
+      body:JSON.stringify({
+        username:document.getElementById("username").value.trim(),
+        type:document.getElementById("type").value,
+        year:document.getElementById("year").value.trim(),
+        calendarUrl:document.getElementById("calendarUrl").value.trim()
+      })
+    });
+    const d=await r.json();
+    result.textContent=r.ok?"✅ 已補錄成功。現在回首頁搜尋同帳號年份。":"❌ "+(d.error||"補錄失敗");
+  }catch{
+    result.textContent="❌ 連線失敗";
+  }
+}
+</script>
+</body>
+</html>
