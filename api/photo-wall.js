@@ -1,3 +1,30 @@
+function redisConfig(){
+  const redisUrl=process.env.UPSTASH_REDIS_REST_URL||process.env.KV_REST_API_URL;
+  const redisToken=process.env.UPSTASH_REDIS_REST_TOKEN||process.env.KV_REST_API_TOKEN;
+  if(!redisUrl||!redisToken)return null;
+  return {baseUrl:redisUrl.replace(/\/$/,""),token:redisToken};
+}
+async function redisCall(cfg,path){
+  const r=await fetch(cfg.baseUrl+path,{headers:{Authorization:`Bearer ${cfg.token}`},cache:"no-store"});
+  if(!r.ok)throw new Error("Redis");
+  return r.json();
+}
+async function cacheGet(cfg,key){
+  if(!cfg)return null;
+  try{
+    const d=await redisCall(cfg,`/get/${encodeURIComponent(key)}`);
+    return d?.result?JSON.parse(d.result):null;
+  }catch{return null}
+}
+async function cacheSet(cfg,key,value,ttl){
+  if(!cfg)return;
+  try{
+    const raw=JSON.stringify(value);
+    await redisCall(cfg,`/set/${encodeURIComponent(key)}/${encodeURIComponent(raw)}`);
+    if(ttl)await redisCall(cfg,`/expire/${encodeURIComponent(key)}/${ttl}`);
+  }catch{}
+}
+
 module.exports=async function handler(req,res){
   const diagnostic={stage:"start",entryPages:0,bookCount:0,albumPages:0,thumbCount:0,recoveredCount:0};
   try{
@@ -10,6 +37,13 @@ module.exports=async function handler(req,res){
     if(!/^\d{4}$/.test(year))
       return res.status(400).json({ok:false,error:"年份格式不正確",diagnostic});
     if(ts&&!/^\d{14}$/.test(ts))ts="";
+
+    const cfg=redisConfig();
+    const cacheKey=`ytm:photos:prod:v1:${username.toLowerCase()}:${year}`;
+    const cached=await cacheGet(cfg,cacheKey);
+    if(cached?.ok===true&&Array.isArray(cached.photos)&&cached.photos.length){
+      return res.status(200).json({...cached,serverCache:true});
+    }
 
     async function timedFetch(url,timeout=8000,accept="*/*"){
       const c=new AbortController(),tm=setTimeout(()=>c.abort(),timeout);
@@ -122,9 +156,11 @@ module.exports=async function handler(req,res){
       proxyUrl:"/api/photo-image?ts="+encodeURIComponent(x.ts)+"&url="+encodeURIComponent(x.imageUrl)
     }));
 
-    return res.status(200).json({
-      ok:true,username,year,total:thumbs.length,recoveredCount:photos.length,photos,diagnostic
-    });
+    const result={ok:true,username,year,total:thumbs.length,recoveredCount:photos.length,photos};
+    if(photos.length){
+      await cacheSet(cfg,cacheKey,result,7776000);
+    }
+    return res.status(200).json(result);
   }catch{
     diagnostic.stage="unexpected_error";
     return res.status(503).json({ok:false,error:"照片診斷暫時無法完成",diagnostic});
