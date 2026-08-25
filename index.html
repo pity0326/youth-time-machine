@@ -453,6 +453,27 @@ input[type=text]:focus{border-color:#4f6840}
   50%{opacity:1;transform:scale(1.15)}
 }
 
+
+/* V43：原始 Wayback 快速入口 */
+.wayback-direct-btn{
+  margin-left:8px;
+  padding:10px 14px;
+  border-radius:8px;
+  border:1px solid rgba(76,65,48,.25);
+  background:rgba(255,255,255,.55);
+  color:inherit;
+  cursor:pointer;
+  font:inherit;
+}
+.wayback-direct-btn:hover{filter:brightness(.97)}
+@media(max-width:640px){
+  .wayback-direct-btn{
+    margin-left:0;
+    margin-top:8px;
+    width:100%;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -550,6 +571,7 @@ input[type=text]:focus{border-color:#4f6840}
 
       <div class="actions">
         <button id="searchBtn" class="search" onclick="searchYear()">▶ 搭上時光機</button>
+<button type="button" id="waybackDirectBtn" class="wayback-direct-btn" onclick="openWaybackDirect()">⚡ 快速查原始紀錄</button>
         <button id="stopBtn" class="stop" onclick="stopSearch()" disabled>✕ 中止搜尋</button>
       </div>
 
@@ -1243,6 +1265,30 @@ document.addEventListener("click",function(e){
   if(sb)sb.disabled=false;
   if(xb)xb.disabled=true;
 });
+
+function openWaybackDirect(){
+  const u=(document.getElementById("username")?.value||"").trim();
+  if(!u){
+    alert("請先輸入無名帳號");
+    return;
+  }
+
+  const checkedType=document.querySelector('input[name="type"]:checked');
+  const selectType=document.getElementById("type");
+  const t=checkedType?.value || selectType?.value || "album";
+  const y=String(selectedYear||"");
+
+  if(!/^(200[3-9]|201[0-4])$/.test(y)){
+    alert("請先選擇年份");
+    return;
+  }
+
+  // Use the Wretch form that has worked in our diagnostics.
+  const target=`wretch.cc/${t}/${u}`;
+  const url=`https://web.archive.org/web/${y}0000000000*/${target}`;
+  window.open(url,"_blank","noopener,noreferrer");
+}
+
 </script>
 
 </body>
