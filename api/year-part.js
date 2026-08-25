@@ -45,47 +45,45 @@ module.exports=async function handler(req,res){
   };
   const [from,to]=ranges[String(part)];
 
-  // Wayback may have preserved different host variants separately.
-  // Search all common Wretch variants and merge them.
   const userRaw=String(username);
   const userLower=userRaw.toLowerCase();
 
-  const variants=[
-    `http://wretch.cc/${type}/${userRaw}`,
-    `http://www.wretch.cc/${type}/${userRaw}`,
-    `https://wretch.cc/${type}/${userRaw}`,
-    `https://www.wretch.cc/${type}/${userRaw}`,
-    `http://wretch.cc/${type}/${userLower}`,
-    `http://www.wretch.cc/${type}/${userLower}`
+  // Prefix search: Wayback may have saved trailing slash, query strings,
+  // album subpaths, redirects, or different host variants.
+  const prefixes=[
+    `http://wretch.cc/${type}/${userRaw}*`,
+    `http://www.wretch.cc/${type}/${userRaw}*`,
+    `https://wretch.cc/${type}/${userRaw}*`,
+    `https://www.wretch.cc/${type}/${userRaw}*`,
+    `http://wretch.cc/${type}/${userLower}*`,
+    `http://www.wretch.cc/${type}/${userLower}*`
   ];
 
-  const uniqueVariants=[...new Set(variants)];
-
   const cfg=redisConfig();
-  const cacheKey=`ytm:yearpart:v2:${userLower}:${type}:${year}:${part}`;
+  const cacheKey=`ytm:yearpart:v3:${userLower}:${type}:${year}:${part}`;
 
   const cached=await cacheGet(cfg,cacheKey);
   if(cached?.found===true){
     return res.status(200).json({...cached,serverCache:true});
   }
 
-  async function queryOne(oldUrl){
-    const q="https://web.archive.org/cdx/search/cdx?url="+encodeURIComponent(oldUrl)+
+  async function queryPrefix(pattern){
+    const q="https://web.archive.org/cdx/search/cdx?url="+encodeURIComponent(pattern)+
+      "&matchType=prefix"+
       "&from="+year+from+
       "&to="+year+to+
       "&output=json"+
-      "&fl=timestamp,original"+
-      "&filter=statuscode:200"+
+      "&fl=timestamp,original,statuscode"+
       "&collapse=timestamp:8"+
-      "&limit=150"+
+      "&limit=300"+
       "&gzip=false";
 
     const controller=new AbortController();
-    const timer=setTimeout(()=>controller.abort(),6500);
+    const timer=setTimeout(()=>controller.abort(),7000);
 
     try{
       const r=await fetch(q,{
-        headers:{"Accept":"application/json","User-Agent":"YouthTimeMachine/variant-1.0"},
+        headers:{"Accept":"application/json","User-Agent":"YouthTimeMachine/prefix-1.0"},
         signal:controller.signal
       });
       clearTimeout(timer);
@@ -101,8 +99,11 @@ module.exports=async function handler(req,res){
       const rows=[];
       for(let i=1;i<data.length;i++){
         const ts=data[i]?.[0];
-        const original=data[i]?.[1]||oldUrl;
-        if(ts&&String(ts).length>=8)rows.push({ts:String(ts),original:String(original)});
+        const original=data[i]?.[1];
+        const status=data[i]?.[2];
+        if(ts&&original&&String(ts).length>=8){
+          rows.push({ts:String(ts),original:String(original),status:String(status||"")});
+        }
       }
       return rows;
     }catch{
@@ -111,9 +112,7 @@ module.exports=async function handler(req,res){
     }
   }
 
-  // Run host variants in parallel. This fixes cases where Wayback has
-  // wretch.cc but not www.wretch.cc (or vice versa).
-  const groups=await Promise.all(uniqueVariants.map(queryOne));
+  const groups=await Promise.all(prefixes.map(queryPrefix));
   const rows=groups.flat();
 
   const seen=new Set();
@@ -129,6 +128,8 @@ module.exports=async function handler(req,res){
       month:date.slice(4,6),
       day:date.slice(6,8),
       timestamp:row.ts,
+      statuscode:row.status,
+      original:row.original,
       url:`https://web.archive.org/web/${row.ts}/${row.original}`
     });
   }
@@ -147,10 +148,10 @@ module.exports=async function handler(req,res){
     part:Number(part),
     days,
     months,
-    searchedVariants:uniqueVariants.length
+    searchedPrefixes:prefixes.length
   };
 
-  // Cache only successful results.
+  // Only successful segments are cached.
   if(result.found){
     await cacheSet(cfg,cacheKey,result,2592000);
   }
