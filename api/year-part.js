@@ -49,118 +49,128 @@ module.exports=async function handler(req,res){
   const [from,to]=ranges[String(part)];
   const raw=String(username);
   const lower=raw.toLowerCase();
-
-  // 2009~2011 常見舊網址保存形式較分散。
-  // 新年份維持精簡查詢；2011 以前額外加入 HTTPS、尾斜線與 prefix 候選。
   const isOlder=Number(year)<=2011;
 
-  const urls=[...new Set([
+  const roots=[
     `http://wretch.cc/${type}/${raw}`,
     `http://www.wretch.cc/${type}/${raw}`,
     `http://wretch.cc/${type}/${lower}`,
-    `http://www.wretch.cc/${type}/${lower}`,
-    ...(isOlder ? [
-      `https://wretch.cc/${type}/${raw}`,
-      `https://www.wretch.cc/${type}/${raw}`,
-      `http://wretch.cc/${type}/${raw}/`,
-      `http://www.wretch.cc/${type}/${raw}/`,
-      `http://wretch.cc/${type}/${lower}/`,
-      `http://www.wretch.cc/${type}/${lower}/`
-    ] : [])
-  ])];
+    `http://www.wretch.cc/${type}/${lower}`
+  ];
+
+  // 2011 以前常見的是動態頁面被保存，而使用者首頁本身未必有 capture。
+  // 所以舊年份另外掃 Wretch 的舊式 PHP 路徑。
+  const legacy=[];
+  if(isOlder){
+    if(type==="album"){
+      legacy.push(
+        `http://www.wretch.cc/album/album.php?id=${raw}`,
+        `http://www.wretch.cc/album/album.php?id=${lower}`,
+        `http://wretch.cc/album/album.php?id=${raw}`,
+        `http://wretch.cc/album/album.php?id=${lower}`
+      );
+    }else if(type==="blog"){
+      legacy.push(
+        `http://www.wretch.cc/blog/blog.php?id=${raw}`,
+        `http://www.wretch.cc/blog/blog.php?id=${lower}`,
+        `http://wretch.cc/blog/blog.php?id=${raw}`,
+        `http://wretch.cc/blog/blog.php?id=${lower}`
+      );
+    }else if(type==="guestbook"){
+      legacy.push(
+        `http://www.wretch.cc/guestbook/index.php?id=${raw}`,
+        `http://www.wretch.cc/guestbook/index.php?id=${lower}`,
+        `http://wretch.cc/guestbook/index.php?id=${raw}`,
+        `http://wretch.cc/guestbook/index.php?id=${lower}`
+      );
+    }
+  }
+
+  const targets=[...new Set([...roots,...legacy])];
 
   const cfg=redisConfig();
-  const cacheKey=`ytm:olderwide:v1:${lower}:${type}:${year}:${part}`;
-
+  const cacheKey=`ytm:legacywide:v1:${lower}:${type}:${year}:${part}`;
   const cached=await cacheGet(cfg,cacheKey);
   if(cached?.found===true){
     return res.status(200).json({...cached,serverCache:true});
   }
 
-  async function queryCDX(url){
-    const q="https://web.archive.org/cdx/search/cdx?url="+encodeURIComponent(url)+
-      (isOlder ? "&matchType=prefix" : "")+
+  async function timedFetch(url,timeout=8000){
+    const c=new AbortController();
+    const timer=setTimeout(()=>c.abort(),timeout);
+    try{
+      const r=await fetch(url,{
+        headers:{"Accept":"application/json","User-Agent":"YouthTimeMachine/legacy-wide-1.0"},
+        signal:c.signal,
+        cache:"no-store"
+      });
+      clearTimeout(timer);
+      return r;
+    }catch{
+      clearTimeout(timer);
+      return null;
+    }
+  }
+
+  async function cdx(target){
+    // legacy PHP URLs need prefix because query strings/book/page params can follow id=...
+    const usePrefix=isOlder && /\.php\?id=/i.test(target);
+    const q="https://web.archive.org/cdx/search/cdx?url="+encodeURIComponent(target)+
+      (usePrefix?"&matchType=prefix":"")+
       "&from="+year+from+
       "&to="+year+to+
       "&output=json"+
       "&fl=timestamp,original"+
       "&collapse=timestamp:8"+
-      "&limit="+(isOlder ? "250" : "120")+
+      "&limit="+(isOlder?"300":"120")+
       "&gzip=false";
 
-    const c=new AbortController();
-    const timer=setTimeout(()=>c.abort(),isOlder?10500:7000);
+    const r=await timedFetch(q,isOlder?10000:7000);
+    if(!r?.ok)return [];
 
     try{
-      const r=await fetch(q,{
-        headers:{"Accept":"application/json","User-Agent":"YouthTimeMachine/fast-quarter-1.0"},
-        signal:c.signal,
-        cache:"no-store"
-      });
-      clearTimeout(timer);
-
-      if(!r.ok)return [];
-
-      const text=await r.text();
-      let data;
-      try{data=JSON.parse(text)}catch{return []}
-
+      const data=JSON.parse(await r.text());
       if(!Array.isArray(data)||data.length<=1)return [];
-
       return data.slice(1).map(row=>({
         ts:String(row?.[0]||""),
-        original:String(row?.[1]||url)
+        original:String(row?.[1]||target)
       })).filter(x=>x.ts.length>=8);
-
-    }catch{
-      clearTimeout(timer);
-      return [];
-    }
+    }catch{return []}
   }
 
-  // All useful URL variants run in parallel.
-  const groups=await Promise.all(urls.map(queryCDX));
-  let rows=groups.flat();
+  // All route variants run in parallel.
+  let rows=(await Promise.all(targets.map(cdx))).flat();
 
-  // Lightweight fallback: if CDX returns nothing, check one point per month.
-  if(!rows.length){
+  // Older years: if CDX is empty, try monthly availability on root URLs and legacy routes.
+  if(!rows.length && isOlder){
     const quarterMonths={
-      "1":[1,2,3],"2":[4,5,6],"3":[7,8,9],"4":[10,11,12]
+      "1":[1,2,3],
+      "2":[4,5,6],
+      "3":[7,8,9],
+      "4":[10,11,12]
     }[String(part)];
 
-    async function availability(url,month){
+    async function available(target,month){
       const mm=String(month).padStart(2,"0");
+      const stamp=`${year}${mm}15`;
       const api="https://archive.org/wayback/available?url="+
-        encodeURIComponent(url)+"&timestamp="+year+mm+"15";
+        encodeURIComponent(target)+"&timestamp="+stamp;
 
-      const c=new AbortController();
-      const timer=setTimeout(()=>c.abort(),3500);
+      const r=await timedFetch(api,4500);
+      if(!r?.ok)return null;
 
       try{
-        const r=await fetch(api,{
-          headers:{"Accept":"application/json","User-Agent":"YouthTimeMachine/fast-quarter-1.0"},
-          signal:c.signal,
-          cache:"no-store"
-        });
-        clearTimeout(timer);
-
-        if(!r.ok)return null;
         const d=await r.json();
-        const hit=d?.archived_snapshots?.closest;
-        if(!hit?.available||!hit.timestamp)return null;
-
-        const ts=String(hit.timestamp);
-        if(!ts.startsWith(year))return null;
-
-        return {ts,original:url};
-      }catch{
-        clearTimeout(timer);
-        return null;
-      }
+        const h=d?.archived_snapshots?.closest;
+        if(!h?.available||!h.timestamp)return null;
+        const ts=String(h.timestamp);
+        if(!ts.startsWith(String(year)))return null;
+        return {ts,original:target};
+      }catch{return null}
     }
 
     rows=(await Promise.all(
-      urls.flatMap(url=>quarterMonths.map(month=>availability(url,month)))
+      targets.flatMap(target=>quarterMonths.map(m=>available(target,m)))
     )).filter(Boolean);
   }
 
@@ -171,7 +181,6 @@ module.exports=async function handler(req,res){
     const date=row.ts.slice(0,8);
     if(date.slice(0,4)!==String(year)||seen.has(date))continue;
     seen.add(date);
-
     days.push({
       date,
       month:date.slice(4,6),
@@ -194,9 +203,12 @@ module.exports=async function handler(req,res){
     year,
     part:Number(part),
     days,
-    months
+    months,
+    legacyMode:isOlder,
+    searchedTargets:targets.length
   };
 
+  // 只存成功結果，0 筆永遠不快取。
   if(result.found){
     await cacheSet(cfg,cacheKey,result,7776000);
   }
