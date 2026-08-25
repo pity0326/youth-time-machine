@@ -885,6 +885,32 @@ async function incrementStats(){
   }catch{}
 }
 
+
+async function warmNearbyYears(username,type,currentYear){
+  // 不影響目前畫面；只在背景慢慢建立相鄰年份的成功索引。
+  const minYear=2003,maxYear=2014;
+  const y=Number(currentYear);
+  const candidates=[y-1,y+1,y-2,y+2].filter(v=>v>=minYear&&v<=maxYear);
+
+  for(const yy of candidates){
+    try{
+      for(let part=1;part<=4;part++){
+        const controller=new AbortController();
+        const timer=setTimeout(()=>controller.abort(),4500);
+        try{
+          await fetch(`/api/year-part?username=${encodeURIComponent(username)}&type=${encodeURIComponent(type)}&year=${yy}&part=${part}`,{
+            signal:controller.signal,
+            cache:"no-store"
+          });
+        }catch{}
+        clearTimeout(timer);
+        // 刻意放慢，避免同時對 Internet Archive 發太多請求。
+        await new Promise(r=>setTimeout(r,250));
+      }
+    }catch{}
+  }
+}
+
 async function searchYear(){
   const u=document.getElementById("username").value.trim();
   const t=document.querySelector('input[name=type]:checked').value;
@@ -902,6 +928,7 @@ async function searchYear(){
     if(c?.data?.found===true && Date.now()-c.savedAt<604800000){
       await incrementStats();
       render(c.data,true);
+      warmNearbyYears(u,t,selectedYear);
       return;
     }
   }catch{}
@@ -922,7 +949,7 @@ async function searchYear(){
   const quarters=[1,2,3,4];
   const mergedDays=[];
   const seen=new Set();
-  let completed=0, failed=0, manualFound=false, manualCalendarUrl="";
+  let completed=0, failed=0;
 
   try{
     for(const q of quarters){
@@ -935,10 +962,6 @@ async function searchYear(){
 
       if(res.ok){
         const d=await res.json();
-        if(d.manual===true){
-          manualFound=true;
-          if(d.calendarUrl) manualCalendarUrl=d.calendarUrl;
-        }
         if(Array.isArray(d.days)){
           for(const x of d.days){
             if(!seen.has(x.date)){
@@ -975,23 +998,6 @@ async function searchYear(){
       months[x.month].push(x);
     }
 
-    if(!mergedDays.length && manualFound){
-      r.innerHTML=`<div class="box">
-        <strong>🎉 已確認 ${selectedYear} 年有保存紀錄</strong>
-        <span class="badge">人工確認</span>
-        <div class="small" style="margin-top:8px">
-          Wayback 年曆已確認這一年存在紀錄，但 Internet Archive 目前沒有穩定回傳完整日期清單。
-          先提供年曆入口；等服務回穩後再搜尋，日期會自動補上。
-        </div>
-        <div class="result-actions">
-          <a class="mini-btn primary" target="_blank" rel="noopener" href="${manualCalendarUrl||calendar(u,t)}">🕰️ 打開 Wayback 年曆</a>
-          <button type="button" class="mini-btn" onclick="searchYear()">🔄 再嘗試抓日期</button>
-        </div>
-      </div>`;
-      await incrementStats();
-      return;
-    }
-
     const finalData={
       found:mergedDays.length>0,
       year:selectedYear,
@@ -1008,6 +1014,7 @@ async function searchYear(){
     }
 
     render(finalData);
+    if(finalData.found===true){ warmNearbyYears(u,t,selectedYear); }
 
   }catch(e){
     if(e.name==="AbortError"){
