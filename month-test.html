@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>青春時光機｜月份測試</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;font-family:Arial,"Microsoft JhengHei",sans-serif;background:linear-gradient(135deg,#fff8f0,#eef6ff);display:flex;align-items:center;justify-content:center;padding:20px}
+.card{width:100%;max-width:640px;background:#fff;border-radius:24px;padding:34px 24px;box-shadow:0 10px 35px rgba(0,0,0,.08);text-align:center}
+h1{margin:0 0 8px}.sub{color:#666;line-height:1.7;margin-bottom:22px}
+input[type="text"],select{width:100%;padding:15px;border:2px solid #ddd;border-radius:12px;font-size:16px;margin-top:10px;background:#fff}
+.label{font-weight:bold;margin-top:20px}
+.choices{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.choice input{display:none}
+.choice span{display:block;padding:13px 4px;border:2px solid #e5e5e5;border-radius:12px;cursor:pointer;line-height:1.7}
+.choice input:checked+span{background:#222;color:#fff;border-color:#222}
+.months{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
+.month-btn{padding:12px 6px;border:2px solid #e5e5e5;border-radius:11px;background:#fff;cursor:pointer;font-size:15px}
+.month-btn.active{background:#222;color:#fff;border-color:#222}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:20px}
+button{padding:15px;border:0;border-radius:12px;font-size:17px;font-weight:bold;cursor:pointer}
+.search{background:#222;color:#fff}
+.stop{background:#f1f1f1;color:#222}
+button:disabled{opacity:.5;cursor:not-allowed}
+#result{margin-top:22px}
+.box{background:#fafafa;border:1px solid #eee;border-radius:15px;padding:18px;text-align:left;line-height:1.7}
+.month-title{font-weight:bold;font-size:18px;margin-bottom:8px}
+.day{display:inline-block;margin:4px;padding:8px 10px;border:1px solid #ddd;border-radius:9px;background:#fff;color:#222;text-decoration:none}
+.small{color:#777;font-size:13px;line-height:1.7;margin-top:8px}
+.fallback{display:inline-block;margin-top:12px;padding:10px 14px;border-radius:9px;background:#222;color:#fff;text-decoration:none}
+.timer{font-variant-numeric:tabular-nums;font-weight:bold}
+@media(max-width:480px){.months{grid-template-columns:repeat(3,1fr)}.actions{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="card">
+<h1>🕰️ 青春時光機</h1>
+<div class="sub">月份查詢測試版｜只查單一月份，並可隨時中止</div>
+
+<input id="username" type="text" placeholder="輸入無名帳號">
+
+<div class="label">你想回去哪裡？</div>
+<div class="choices">
+<label class="choice"><input type="radio" name="type" value="album" checked><span>📷<br>相簿</span></label>
+<label class="choice"><input type="radio" name="type" value="blog"><span>📝<br>網誌</span></label>
+<label class="choice"><input type="radio" name="type" value="guestbook"><span>💬<br>留言板</span></label>
+</div>
+
+<div class="label">選擇年份</div>
+<select id="year"></select>
+
+<div class="label">選擇月份</div>
+<div class="months" id="months"></div>
+
+<div class="actions">
+<button class="search" id="searchBtn" onclick="searchMonth()">🔎 搜尋這個月</button>
+<button class="stop" id="stopBtn" onclick="stopSearch()" disabled>✕ 中止搜尋</button>
+</div>
+
+<div id="result"></div>
+</div>
+
+<script>
+const yearSelect=document.getElementById("year");
+for(let y=2013;y>=2003;y--){const o=document.createElement("option");o.value=y;o.textContent=y+" 年";yearSelect.appendChild(o)}
+
+let selectedMonth=1;
+const monthsEl=document.getElementById("months");
+for(let m=1;m<=12;m++){
+  const b=document.createElement("button");
+  b.className="month-btn"+(m===1?" active":"");
+  b.type="button";
+  b.textContent=m+" 月";
+  b.onclick=()=>{
+    selectedMonth=m;
+    document.querySelectorAll(".month-btn").forEach(x=>x.classList.remove("active"));
+    b.classList.add("active");
+  };
+  monthsEl.appendChild(b);
+}
+
+let activeController=null;
+let timerId=null;
+let startedAt=0;
+
+function setTimer(on){
+  clearInterval(timerId);
+  if(!on) return;
+  startedAt=Date.now();
+  timerId=setInterval(()=>{
+    const el=document.getElementById("elapsed");
+    if(el) el.textContent=((Date.now()-startedAt)/1000).toFixed(1);
+  },100);
+}
+
+function stopSearch(){
+  if(activeController){
+    activeController.abort();
+    activeController=null;
+  }
+}
+
+async function searchMonth(){
+  const username=document.getElementById("username").value.trim();
+  const year=yearSelect.value;
+  const month=String(selectedMonth).padStart(2,"0");
+  const type=document.querySelector('input[name="type"]:checked').value;
+  const result=document.getElementById("result");
+  const searchBtn=document.getElementById("searchBtn");
+  const stopBtn=document.getElementById("stopBtn");
+
+  if(!username){alert("請先輸入無名帳號");return}
+  if(!/^[A-Za-z0-9._-]{1,80}$/.test(username)){alert("帳號格式不正確");return}
+
+  activeController=new AbortController();
+  searchBtn.disabled=true;
+  stopBtn.disabled=false;
+
+  result.innerHTML=`<div class="box">⏳ 正在搜尋 ${year} 年 ${Number(month)} 月的紀錄…<div class="small">已搜尋 <span id="elapsed" class="timer">0.0</span> 秒，你可以隨時按「中止搜尋」。</div></div>`;
+  setTimer(true);
+
+  try{
+    const r=await fetch(`/api/month?username=${encodeURIComponent(username)}&type=${type}&year=${year}&month=${month}`,{signal:activeController.signal});
+    const d=await r.json();
+    if(!r.ok) throw new Error(d.error||"查詢失敗");
+
+    if(!d.found){
+      result.innerHTML=`<div class="box">🥲 ${year} 年 ${Number(month)} 月暫時沒有取得紀錄。<div class="small">這不一定代表當月完全沒有資料。</div><a class="fallback" target="_blank" rel="noopener" href="${d.calendarUrl}">到 Wayback 查看全部日期</a></div>`;
+      return;
+    }
+
+    let out=`<div class="box"><div class="month-title">🎉 ${year} 年 ${Number(month)} 月找到 ${d.days.length} 個有保存紀錄的日期</div>`;
+    for(const x of d.days){
+      out+=`<a class="day" target="_blank" rel="noopener" href="${x.url}">${Number(x.day)} 日</a>`;
+    }
+    out+=`<div class="small">每一天只顯示一個代表快照；點日期即可進入當天保存版本。</div></div>`;
+    result.innerHTML=out;
+  }catch(e){
+    if(e.name==="AbortError"){
+      result.innerHTML=`<div class="box">⛔ 已中止搜尋。<div class="small">你可以換月份或稍後再試。</div></div>`;
+    }else{
+      result.innerHTML=`<div class="box">⚠️ 查詢失敗。<div class="small">${e.message}</div></div>`;
+    }
+  }finally{
+    setTimer(false);
+    activeController=null;
+    searchBtn.disabled=false;
+    stopBtn.disabled=true;
+  }
+}
+</script>
+</body>
+</html>
