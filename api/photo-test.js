@@ -1,127 +1,75 @@
 export default async function handler(req, res) {
   try {
-    const albumSnapshot =
-      "https://web.archive.org/web/20131227084024id_/http://www.wretch.cc/album/album.php?id=BaBy217&book=2";
+    // 我們已經從相簿頁確認存在的第一張照片頁
+    const photoPage =
+      "http://www.wretch.cc/album/show.php?i=BaBy217&b=2&f=1060718966&p=0&sp=0";
 
-    const albumRes = await fetch(albumSnapshot, {
+    // 查這個照片頁自己在 Wayback 的保存紀錄
+    const cdx =
+      "https://web.archive.org/cdx/search/cdx" +
+      "?url=" + encodeURIComponent(photoPage) +
+      "&output=json" +
+      "&filter=statuscode:200" +
+      "&filter=mimetype:text/html" +
+      "&fl=timestamp,original,statuscode,mimetype,digest" +
+      "&collapse=digest";
+
+    const cdxRes = await fetch(cdx, {
       headers: {
         "User-Agent": "Mozilla/5.0"
       }
     });
 
-    if (!albumRes.ok) {
+    if (!cdxRes.ok) {
       return res.status(502).json({
         ok: false,
-        error: "相簿頁讀取失敗",
-        status: albumRes.status
+        step: "cdx",
+        error: "Wayback 保存紀錄查詢失敗",
+        status: cdxRes.status
       });
     }
 
-    const albumHtml = await albumRes.text();
+    const text = await cdxRes.text();
 
-    // 找第一個照片頁
-    const showLinks = [
-      ...albumHtml.matchAll(/href=["']([^"']*show\.php[^"']*)["']/gi)
-    ].map(m => m[1]);
+    let rows;
 
-    const uniqueShowLinks = [...new Set(showLinks)];
+    try {
+      rows = JSON.parse(text);
+    } catch {
+      return res.status(502).json({
+        ok: false,
+        step: "cdx",
+        error: "Wayback 回傳格式無法解析",
+        preview: text.slice(0, 500)
+      });
+    }
 
-    if (uniqueShowLinks.length === 0) {
+    // 第一列是欄位名稱
+    if (!Array.isArray(rows) || rows.length <= 1) {
       return res.status(200).json({
-        ok: false,
-        error: "找不到照片頁連結"
+        ok: true,
+        photoPage,
+        snapshotCount: 0,
+        message: "這張照片頁沒有找到可用的 Wayback 保存紀錄",
+        snapshots: []
       });
     }
 
-    const firstPhotoLink = uniqueShowLinks[0];
-
-    const fullPhotoPageUrl = new URL(
-      firstPhotoLink,
-      "http://www.wretch.cc/album/"
-    ).href;
-
-    const archivedPhotoPage =
-      "https://web.archive.org/web/20131227084024id_/" +
-      fullPhotoPageUrl;
-
-    const photoRes = await fetch(archivedPhotoPage, {
-      headers: {
-        "User-Agent": "Mozilla/5.0"
-      }
-    });
-
-    if (!photoRes.ok) {
-      return res.status(502).json({
-        ok: false,
-        error: "照片頁讀取失敗",
-        status: photoRes.status,
-        archivedPhotoPage
-      });
-    }
-
-    const photoHtml = await photoRes.text();
-
-    // 1. 所有 img src
-    const imgSrcs = [
-      ...photoHtml.matchAll(/<img[^>]+src=["']([^"']+)["']/gi)
-    ].map(m => m[1]);
-
-    // 2. 所有 href
-    const hrefs = [
-      ...photoHtml.matchAll(/href=["']([^"']+)["']/gi)
-    ].map(m => m[1]);
-
-    // 3. 所有可能的圖片檔網址
-    const imageFiles = [
-      ...photoHtml.matchAll(
-        /https?:\/\/[^"'()\s<>]+\.(?:jpg|jpeg|png|gif|webp)(?:\?[^"'()\s<>]*)?/gi
-      )
-    ].map(m => m[0]);
-
-    // 4. 相對路徑圖片
-    const relativeImages = [
-      ...photoHtml.matchAll(
-        /["']([^"']+\.(?:jpg|jpeg|png|gif|webp)(?:\?[^"']*)?)["']/gi
-      )
-    ].map(m => m[1]);
-
-    // 5. CSS background-image
-    const backgroundImages = [
-      ...photoHtml.matchAll(
-        /url\(["']?([^"')]+)["']?\)/gi
-      )
-    ].map(m => m[1]);
-
-    // 6. 找所有看起來像無名圖片主機的字串
-    const wretchCandidates = [
-      ...photoHtml.matchAll(
-        /[^"'()\s<>]*(?:wretch|yimg|f\d+\.wretch)[^"'()\s<>]*/gi
-      )
-    ].map(m => m[0]);
-
-    function unique(arr) {
-      return [...new Set(arr.filter(Boolean))];
-    }
+    const snapshots = rows.slice(1).map(row => ({
+      timestamp: row[0],
+      original: row[1],
+      status: row[2],
+      mimetype: row[3],
+      digest: row[4],
+      archivedPage:
+        `https://web.archive.org/web/${row[0]}id_/${row[1]}`
+    }));
 
     return res.status(200).json({
       ok: true,
-
-      firstPhotoLink,
-      archivedPhotoPage,
-
-      htmlLength: photoHtml.length,
-
-      imgSrcs: unique(imgSrcs).slice(0, 100),
-
-      hrefs: unique(hrefs).slice(0, 100),
-
-      imageFiles: unique(imageFiles).slice(0, 100),
-
-      relativeImages: unique(relativeImages).slice(0, 100),
-
-      backgroundImages: unique(backgroundImages).slice(0, 100),
-
-      wretchCandidates: unique(wretchCandidates).slice(0, 100)
+      photoPage,
+      snapshotCount: snapshots.length,
+      snapshots
     });
 
   } catch (error) {
