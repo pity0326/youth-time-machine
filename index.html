@@ -324,6 +324,53 @@ input[type=text]:focus{border-color:#4f6840}
 @media(max-width:650px){.photo-rescue-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}}
 @media(max-width:390px){.photo-rescue-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
+
+/* 青春照片牆 2.0 */
+.photo-rescue{
+  margin-top:20px;padding:20px 18px 22px;
+  border:1px solid #b39d72;border-radius:5px;
+  background:
+    repeating-linear-gradient(0deg,rgba(91,74,43,.035) 0 1px,transparent 1px 28px),
+    #eee0bf;
+  position:relative;overflow:hidden;
+}
+.photo-rescue::before{
+  content:"WRETCH ALBUM / MEMORY";
+  display:block;margin-bottom:12px;color:#6f614b;
+  font:12px Georgia,serif;letter-spacing:2px;
+}
+.photo-rescue-head{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.photo-rescue-title{font-family:"DFKai-SB","Microsoft JhengHei",serif;font-size:20px;color:#40372b}
+.photo-rescue-count{font:13px Georgia,"Microsoft JhengHei",serif;color:#725f3f;background:#e1cfaa;border:1px dashed #a78e61;padding:6px 10px;border-radius:999px}
+.photo-rescue-btn{box-shadow:2px 3px 0 rgba(54,45,29,.16)}
+.photo-rescue-status{margin-top:12px}
+.photo-rescue-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:18px;margin-top:20px;padding:5px}
+.memory-photo{
+  position:relative;background:#fffaf0;padding:8px 8px 28px;
+  box-shadow:4px 6px 10px rgba(73,57,31,.18);
+  transition:transform .16s ease,box-shadow .16s ease;
+}
+.memory-photo:hover{transform:rotate(0deg) translateY(-3px)!important;box-shadow:5px 9px 14px rgba(73,57,31,.24)}
+.memory-photo::before{
+  content:"";position:absolute;left:50%;top:-9px;transform:translateX(-50%) rotate(-2deg);
+  width:52px;height:18px;background:rgba(201,171,104,.58);z-index:2;
+}
+.memory-photo img{aspect-ratio:1/1;object-fit:cover;image-rendering:auto}
+.memory-photo small{font-size:10px;letter-spacing:1px;color:#746650}
+.photo-rescue-tip{
+  margin-top:18px;padding:10px 12px;border-top:1px dashed #b5a078;
+  color:#756751;font-size:12px;line-height:1.7
+}
+.photo-rescue-empty{padding:20px 4px;text-align:center;color:#776a54}
+@media(max-width:650px){
+  .photo-rescue{padding:16px 12px 18px}
+  .photo-rescue-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+  .memory-photo{padding:6px 6px 23px}
+}
+@media(max-width:390px){
+  .photo-rescue-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+
 </style>
 </head>
 <body>
@@ -716,21 +763,67 @@ function render(d,cache=false){const r=document.getElementById("result");if(!d.f
 let h=`<div class="box"><strong>🎉 找到 ${selectedYear} 年的青春了！</strong>${cache?'<span class="badge">快取</span>':''}<div class="small">共找到 ${d.days.length} 個有保存紀錄的日期</div>`;
 for(const m of Object.keys(d.months).sort()){h+=`<div class="month">${Number(m)} 月</div>`;for(const x of d.months[m])h+=`<a class="day" target="_blank" rel="noopener" href="${x.url}">${Number(x.day)} 日</a>`}
 h+=`<div class="small">點日期即可回到當天保存的無名頁面。</div>`;const u=document.getElementById("username").value.trim(),t=document.querySelector('input[name=type]:checked').value;
-if(t==="album"){h+=`<div class="photo-rescue"><button type="button" class="photo-rescue-btn" onclick="rescuePhotos()">📷 找回我的青春照片</button><div id="photoRescueStatus" class="photo-rescue-status">會從這次找到的相簿保存頁中，尋找仍可救回的小張照片。</div><div id="photoRescueGrid" class="photo-rescue-grid"></div></div>`;}
+if(t==="album"){h+=`<div class="photo-rescue"><div class="photo-rescue-head"><div><div class="photo-rescue-title">📷 我的青春照片牆</div><div class="photo-rescue-status" id="photoRescueStatus">有些照片沒有消失，只是被時間藏起來了。</div></div><button type="button" class="photo-rescue-btn" onclick="rescuePhotos()">找回照片</button></div><div id="photoRescueGrid" class="photo-rescue-grid"></div><div id="photoRescueTip" class="photo-rescue-tip" style="display:none">目前找回的是 Internet Archive 當年保存的小張縮圖。點照片可單獨開啟；手機可長按圖片儲存。</div></div>`;}
 h+=buildShareCard(d,u,t,selectedYear);h+=`</div>`;r.innerHTML=h}
 
 
 async function rescuePhotos(){
-  const u=document.getElementById("username").value.trim(),status=document.getElementById("photoRescueStatus"),grid=document.getElementById("photoRescueGrid"),btn=document.querySelector(".photo-rescue-btn");
-  if(!u||!status||!grid)return;
-  btn.disabled=true;grid.innerHTML="";status.innerHTML="⏳ 正在翻找你的青春照片…<br><span class='small'>舊照片需要逐張確認，第一次可能會稍微久一點。</span>";
+  const u=document.getElementById("username").value.trim();
+  const status=document.getElementById("photoRescueStatus");
+  const grid=document.getElementById("photoRescueGrid");
+  const tip=document.getElementById("photoRescueTip");
+  const btn=document.querySelector(".photo-rescue-btn");
+  if(!u||!status||!grid||!btn)return;
+
+  btn.disabled=true;
+  btn.textContent="正在翻找…";
+  grid.innerHTML="";
+  if(tip)tip.style.display="none";
+  status.innerHTML="⏳ 正在翻找你的青春照片…<br><span class='small'>舊照片需要逐張確認，第一次可能會稍微久一點。</span>";
+
   try{
     const res=await fetch(`/api/photo-wall?username=${encodeURIComponent(u)}&year=${encodeURIComponent(selectedYear)}`,{cache:"no-store"});
-    const d=await res.json();if(!res.ok||!d.ok)throw new Error(d.error||"照片搜尋失敗");
-    if(!d.photos?.length){status.innerHTML="🥲 這次找到的相簿保存頁裡，暫時沒有可救回的照片縮圖。";return}
-    status.innerHTML=`🎉 找回 <strong>${d.recoveredCount}</strong> 張青春照片！<br><span class="small">目前是 Internet Archive 保存下來的小張縮圖；點照片可開啟，手機可長按儲存。</span>`;
-    d.photos.forEach((p,i)=>{const a=document.createElement("a");a.className="memory-photo";a.href=p.proxyUrl;a.target="_blank";a.rel="noopener";a.style.setProperty("--r",((i%5)-2)*.45+"deg");const img=document.createElement("img");img.loading="lazy";img.src=p.proxyUrl;img.alt=`青春照片 ${i+1}`;const cap=document.createElement("small");cap.textContent=`MEMORY ${String(i+1).padStart(2,"0")}`;a.append(img,cap);grid.appendChild(a)});
-  }catch(e){status.innerHTML="⏳ 照片時光機暫時卡住了。Internet Archive 可能比較忙，稍後再試一次就好。"}finally{btn.disabled=false}
+    const d=await res.json();
+    if(!res.ok||!d.ok)throw new Error(d.error||"照片搜尋失敗");
+
+    if(!d.photos?.length){
+      status.innerHTML="🥲 這次沒有找到可救回的照片縮圖。<br><span class='small'>不代表以前沒有照片，可能只是 Internet Archive 當年沒有保存到。</span>";
+      grid.innerHTML='<div class="photo-rescue-empty">換個年份再搭一次時光機，也許會挖到不同的照片。</div>';
+      return;
+    }
+
+    status.innerHTML=`🎉 <strong>挖回 ${d.recoveredCount} 張青春照片！</strong> <span class="photo-rescue-count">${selectedYear} · ${u}</span>`;
+    if(tip)tip.style.display="block";
+
+    d.photos.forEach((p,i)=>{
+      const a=document.createElement("a");
+      a.className="memory-photo";
+      a.href=p.proxyUrl;
+      a.target="_blank";
+      a.rel="noopener";
+      a.title="點一下開啟照片";
+      a.style.setProperty("--r",((i%7)-3)*0.38+"deg");
+
+      const img=document.createElement("img");
+      img.loading="lazy";
+      img.src=p.proxyUrl;
+      img.alt=`${u} 的青春照片 ${i+1}`;
+      img.onerror=()=>a.remove();
+
+      const cap=document.createElement("small");
+      cap.textContent=`MEMORY ${String(i+1).padStart(2,"0")}`;
+
+      a.append(img,cap);
+      grid.appendChild(a);
+    });
+
+    setTimeout(()=>grid.scrollIntoView({behavior:"smooth",block:"nearest"}),100);
+  }catch(e){
+    status.innerHTML="⏳ 照片時光機暫時卡住了。<br><span class='small'>Internet Archive 可能比較忙，稍後再按一次「找回照片」。</span>";
+  }finally{
+    btn.disabled=false;
+    btn.textContent="再找一次";
+  }
 }
 
 async function loadStats(){
