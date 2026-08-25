@@ -35,7 +35,7 @@ module.exports=async function handler(req,res){
     return res.status(400).json({error:"帳號格式不正確"});
   if(!["album","blog","guestbook"].includes(type))
     return res.status(400).json({error:"類型不正確"});
-  if(!/^(200[0-9]|201[0-3])$/.test(year||""))
+  if(!/^(200[0-9]|201[0-4])$/.test(year||""))
     return res.status(400).json({error:"年份不正確"});
   if(!/^[1-4]$/.test(String(part||"")))
     return res.status(400).json({error:"分段不正確"});
