@@ -50,16 +50,27 @@ module.exports=async function handler(req,res){
   const raw=String(username);
   const lower=raw.toLowerCase();
 
-  // Keep variants small and useful. Too many variants made V19 very slow.
+  // 2009~2011 常見舊網址保存形式較分散。
+  // 新年份維持精簡查詢；2011 以前額外加入 HTTPS、尾斜線與 prefix 候選。
+  const isOlder=Number(year)<=2011;
+
   const urls=[...new Set([
     `http://wretch.cc/${type}/${raw}`,
     `http://www.wretch.cc/${type}/${raw}`,
     `http://wretch.cc/${type}/${lower}`,
-    `http://www.wretch.cc/${type}/${lower}`
+    `http://www.wretch.cc/${type}/${lower}`,
+    ...(isOlder ? [
+      `https://wretch.cc/${type}/${raw}`,
+      `https://www.wretch.cc/${type}/${raw}`,
+      `http://wretch.cc/${type}/${raw}/`,
+      `http://www.wretch.cc/${type}/${raw}/`,
+      `http://wretch.cc/${type}/${lower}/`,
+      `http://www.wretch.cc/${type}/${lower}/`
+    ] : [])
   ])];
 
   const cfg=redisConfig();
-  const cacheKey=`ytm:fastpart:v1:${lower}:${type}:${year}:${part}`;
+  const cacheKey=`ytm:olderwide:v1:${lower}:${type}:${year}:${part}`;
 
   const cached=await cacheGet(cfg,cacheKey);
   if(cached?.found===true){
@@ -68,16 +79,17 @@ module.exports=async function handler(req,res){
 
   async function queryCDX(url){
     const q="https://web.archive.org/cdx/search/cdx?url="+encodeURIComponent(url)+
+      (isOlder ? "&matchType=prefix" : "")+
       "&from="+year+from+
       "&to="+year+to+
       "&output=json"+
       "&fl=timestamp,original"+
       "&collapse=timestamp:8"+
-      "&limit=120"+
+      "&limit="+(isOlder ? "250" : "120")+
       "&gzip=false";
 
     const c=new AbortController();
-    const timer=setTimeout(()=>c.abort(),7000);
+    const timer=setTimeout(()=>c.abort(),isOlder?10500:7000);
 
     try{
       const r=await fetch(q,{
