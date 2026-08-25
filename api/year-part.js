@@ -96,7 +96,10 @@ module.exports=async function(req,res){
   // Use the single canonical URL that already proved successful in diagnostics.
   const target=`http://www.wretch.cc:80/${type}/${username}`;
 
-  const probeDays=[1,8,15,22,28];
+  // V37: sparse dates can miss captures like 2012-01-12.
+  // Scan every odd day. Any capture is at most 1 day away from a probe,
+  // while still keeping concurrency low enough to avoid Archive throttling.
+  const probeDays=[1,3,5,7,9,11,13,15,17,19,21,23,25,27,29,31];
   const hits=[];
 
   // Small sequential batches to avoid Archive throttling.
@@ -152,7 +155,7 @@ module.exports=async function(req,res){
 
   if(result.found){
     // part cache
-    await cacheSet(cfg,`ytm:v35:${username.toLowerCase()}:${type}:${year}:${part}`,result,7776000);
+    await cacheSet(cfg,`ytm:v37:${username.toLowerCase()}:${type}:${year}:${part}`,result,7776000);
 
     // merge to full-year shared cache used by /api/year-cache
     if(cfg){
