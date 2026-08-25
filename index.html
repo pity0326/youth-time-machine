@@ -765,7 +765,7 @@ if(d?.found && Array.isArray(d.days) && d.days.length){
   const pick=(sameYear.length?sameYear:d.days).slice().sort((a,b)=>String(a.timestamp).localeCompare(String(b.timestamp))).pop();
   if(pick?.timestamp) lastAlbumTimestamp=String(pick.timestamp);
 }if(!d.found){const u=document.getElementById("username").value.trim(),t=document.querySelector('input[name=type]:checked').value;r.innerHTML=`<div class="box"><strong>🔎 沒有找到 ${u} 在 ${selectedYear} 年的保存紀錄</strong><div class="small">請先確認帳號有沒有打錯字。若帳號正確，可能是這一年沒有被 Internet Archive 保存，也可以換其他年份或「相簿／網誌／留言板」再試試。</div><div class="result-actions"><button type="button" class="mini-btn primary" onclick="document.getElementById('username').focus()">確認帳號</button><button type="button" class="mini-btn" onclick="document.getElementById('result').innerHTML=''">換年份看看</button><a class="mini-btn" target="_blank" rel="noopener" href="${calendar(u,t)}">直接前往 Wayback</a></div></div>`;return}
-let h=`<div class="box"><strong>🎉 找到 ${selectedYear} 年的青春了！</strong>${cache?'<span class="badge">快取</span>':''}<div class="small">共找到 ${d.days.length} 個有保存紀錄的日期</div>`;
+let h=`<div class="box"><strong>🎉 找到 ${selectedYear} 年的青春了！</strong>${cache?'<span class="badge">裝置快取</span>':''}${d.serverCache?'<span class="badge">雲端快取</span>':''}<div class="small">共找到 ${d.days.length} 個有保存紀錄的日期</div>`;
 for(const m of Object.keys(d.months).sort()){h+=`<div class="month">${Number(m)} 月</div>`;for(const x of d.months[m])h+=`<a class="day" target="_blank" rel="noopener" href="${x.url}">${Number(x.day)} 日</a>`}
 h+=`<div class="small">點日期即可回到當天保存的無名頁面。</div>`;const u=document.getElementById("username").value.trim(),t=document.querySelector('input[name=type]:checked').value;
 if(t==="album"){h+=`<div class="photo-rescue"><div class="photo-rescue-head"><div><div class="photo-rescue-title">📷 我的青春照片牆</div><div class="photo-rescue-status" id="photoRescueStatus">有些照片沒有消失，只是被時間藏起來了。</div></div><button type="button" class="photo-rescue-btn" onclick="rescuePhotos()">找回照片</button></div><div id="photoRescueGrid" class="photo-rescue-grid"></div><div id="photoRescueTip" class="photo-rescue-tip" style="display:none">目前找回的是 Internet Archive 當年保存的小張縮圖。點照片可單獨開啟；手機可長按圖片儲存。</div></div>`;}
@@ -797,7 +797,7 @@ async function rescuePhotos(){
       return;
     }
 
-    status.innerHTML=`🎉 <strong>挖回 ${d.recoveredCount} 張青春照片！</strong> <span class="photo-rescue-count">${selectedYear} · ${u}</span>`;
+    status.innerHTML=`🎉 <strong>挖回 ${d.recoveredCount} 張青春照片！</strong> <span class="photo-rescue-count">${selectedYear} · ${u}</span>${d.serverCache?' <span class="badge">雲端快取</span>':''}`;
     if(tip)tip.style.display="block";
 
     d.photos.forEach((p,i)=>{
