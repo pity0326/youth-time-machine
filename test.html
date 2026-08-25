@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>青春時光機｜日期測試版</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Arial, "Microsoft JhengHei", sans-serif;
+      background: linear-gradient(135deg, #fff8f0, #eef6ff);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .card {
+      width: 100%;
+      max-width: 560px;
+      background: white;
+      padding: 36px 24px;
+      border-radius: 24px;
+      box-shadow: 0 10px 35px rgba(0,0,0,.08);
+      text-align: center;
+    }
+    h1 { margin: 0 0 10px; font-size: 32px; }
+    .subtitle { color: #666; line-height: 1.7; margin-bottom: 24px; }
+    input[type="text"], input[type="date"] {
+      width: 100%;
+      padding: 15px;
+      margin-top: 10px;
+      border: 2px solid #ddd;
+      border-radius: 12px;
+      font-size: 16px;
+      outline: none;
+    }
+    .label { margin-top: 20px; font-weight: bold; }
+    .choices {
+      display: grid;
+      grid-template-columns: repeat(3,1fr);
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .choice input { display: none; }
+    .choice span {
+      display:block;
+      padding: 13px 4px;
+      border: 2px solid #e5e5e5;
+      border-radius: 12px;
+      cursor: pointer;
+      line-height: 1.7;
+    }
+    .choice input:checked + span {
+      background:#222;
+      color:#fff;
+      border-color:#222;
+    }
+    button {
+      width:100%;
+      padding:16px;
+      margin-top:20px;
+      border:0;
+      border-radius:12px;
+      background:#222;
+      color:white;
+      font-size:18px;
+      font-weight:bold;
+      cursor:pointer;
+    }
+    #result { margin-top:22px; }
+    .box {
+      padding:18px;
+      background:#fafafa;
+      border:1px solid #eee;
+      border-radius:14px;
+      line-height:1.7;
+    }
+    .go {
+      display:inline-block;
+      margin-top:12px;
+      padding:11px 16px;
+      border-radius:10px;
+      background:#222;
+      color:#fff;
+      text-decoration:none;
+      font-weight:bold;
+    }
+    .small { color:#777; font-size:14px; margin-top:8px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>🕰️ 青春時光機</h1>
+    <div class="subtitle">
+      日期測試版<br>
+      選一個你想回去的日期，幫你找最接近的公開快照。
+    </div>
+
+    <input id="username" type="text" placeholder="輸入無名帳號">
+
+    <div class="label">你想回去哪裡？</div>
+    <div class="choices">
+      <label class="choice">
+        <input type="radio" name="type" value="album" checked>
+        <span>📷<br>相簿</span>
+      </label>
+      <label class="choice">
+        <input type="radio" name="type" value="blog">
+        <span>📝<br>網誌</span>
+      </label>
+      <label class="choice">
+        <input type="radio" name="type" value="guestbook">
+        <span>💬<br>留言板</span>
+      </label>
+    </div>
+
+    <div class="label">想回到哪一天？</div>
+    <input id="date" type="date" min="2000-01-01" max="2013-12-31">
+
+    <button onclick="findClosest()">🔎 尋找最接近的快照</button>
+
+    <div id="result"></div>
+  </div>
+
+<script>
+async function findClosest() {
+  const username = document.getElementById("username").value.trim();
+  const date = document.getElementById("date").value;
+  const type = document.querySelector('input[name="type"]:checked').value;
+  const result = document.getElementById("result");
+
+  if (!username) {
+    alert("請先輸入無名帳號");
+    return;
+  }
+
+  if (!date) {
+    alert("請先選日期");
+    return;
+  }
+
+  if (!/^[A-Za-z0-9._-]{1,80}$/.test(username)) {
+    alert("帳號格式不正確");
+    return;
+  }
+
+  result.innerHTML = '<div class="box">🔎 正在尋找最接近的快照...</div>';
+
+  const oldUrl = `http://www.wretch.cc/${type}/${username}`;
+  const timestamp = date.replaceAll("-", "") + "120000";
+
+  try {
+    const api =
+      "https://archive.org/wayback/available" +
+      "?url=" + encodeURIComponent(oldUrl) +
+      "&timestamp=" + timestamp;
+
+    const response = await fetch(api);
+    const data = await response.json();
+
+    const closest =
+      data &&
+      data.archived_snapshots &&
+      data.archived_snapshots.closest;
+
+    if (!closest || !closest.available || !closest.timestamp) {
+      const calendarUrl = `https://web.archive.org/web/*/${oldUrl}`;
+      result.innerHTML = `
+        <div class="box">
+          🥲 這個日期附近暫時沒有找到可用快照。
+          <div class="small">你仍可以進入完整時光機查看所有有保存的日期。</div>
+          <a class="go" href="${calendarUrl}" target="_blank" rel="noopener">查看全部日期</a>
+        </div>
+      `;
+      return;
+    }
+
+    const ts = closest.timestamp;
+    const y = ts.slice(0,4);
+    const m = ts.slice(4,6);
+    const d = ts.slice(6,8);
+    const hh = ts.slice(8,10);
+    const mm = ts.slice(10,12);
+
+    let snapUrl = closest.url;
+    if (snapUrl && snapUrl.startsWith("http://")) {
+      snapUrl = "https://" + snapUrl.slice(7);
+    }
+
+    result.innerHTML = `
+      <div class="box">
+        🎉 找到最接近的公開快照！<br>
+        <strong>${y}/${m}/${d} ${hh}:${mm}</strong>
+        <div class="small">你選的是 ${date}，Wayback 會回傳附近最接近的已保存版本。</div>
+        <a class="go" href="${snapUrl}" target="_blank" rel="noopener">回到這一天</a>
+      </div>
+    `;
+
+  } catch (error) {
+    const oldUrl = `http://www.wretch.cc/${type}/${username}`;
+    const fallback =
+      `https://web.archive.org/web/${date.replaceAll("-", "")}/${oldUrl}`;
+
+    result.innerHTML = `
+      <div class="box">
+        ⚠️ 自動查詢失敗，但仍可用日期直接進入 Wayback。
+        <div class="small">Wayback 可能會自動帶你到附近可用的保存日期。</div>
+        <a class="go" href="${fallback}" target="_blank" rel="noopener">用這個日期進入</a>
+      </div>
+    `;
+  }
+}
+</script>
+</body>
+</html>
