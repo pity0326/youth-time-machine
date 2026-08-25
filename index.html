@@ -105,15 +105,70 @@ function buildShareCard(data,u,t,y){
 }
 function downloadShareCard(){
  const card=document.getElementById("shareCard");if(!card)return;
- const title=card.querySelector(".big").textContent,meta=card.querySelector(".meta").innerText;
- const c=document.createElement("canvas");c.width=1080;c.height=1080;const x=c.getContext("2d");
- const g=x.createLinearGradient(0,0,1080,1080);g.addColorStop(0,"#fff5df");g.addColorStop(1,"#eaf4ff");x.fillStyle=g;x.fillRect(0,0,1080,1080);
- x.textAlign="center";x.fillStyle="#222";x.font='bold 58px Arial,"Microsoft JhengHei",sans-serif';x.fillText("青春時光機",540,250);
- x.font='bold 46px Arial,"Microsoft JhengHei",sans-serif';let line="",lines=[];for(const ch of title){let q=line+ch;if(x.measureText(q).width>820){lines.push(line);line=ch}else line=q}if(line)lines.push(line);lines.forEach((l,i)=>x.fillText(l,540,400+i*65));
- x.fillStyle="#555";x.font='30px Arial,"Microsoft JhengHei",sans-serif';meta.split("\n").filter(Boolean).forEach((l,i)=>x.fillText(l.trim(),540,610+i*50));
- x.fillStyle="#777";x.font='25px Arial,"Microsoft JhengHei",sans-serif';x.fillText("那些年以為消失的青春，其實還留在網路的某個角落。",540,810);
- x.fillStyle="#999";x.font='23px Arial,"Microsoft JhengHei",sans-serif';x.fillText("青春時光機 · Created by @pity.0326",540,930);
- const a=document.createElement("a");a.download="我的青春時光機.png";a.href=c.toDataURL("image/png");a.click();
+ const title=card.querySelector(".big").textContent;
+ const meta=card.querySelector(".meta").innerText;
+ const c=document.createElement("canvas");c.width=1080;c.height=1350;const x=c.getContext("2d");
+
+ // 懷舊米白紙張底
+ x.fillStyle="#f3ead7";x.fillRect(0,0,c.width,c.height);
+ // 細微紙張紋理
+ for(let i=0;i<9000;i++){
+   const v=Math.random()*18;
+   x.fillStyle=`rgba(95,75,50,${Math.random()*0.025})`;
+   x.fillRect(Math.random()*1080,Math.random()*1350,1+Math.random()*2,1+Math.random()*2);
+ }
+
+ // 外框與舊網頁視窗
+ x.fillStyle="#fffaf0";x.strokeStyle="#b8aa92";x.lineWidth=3;
+ x.beginPath();x.roundRect(85,105,910,1110,18);x.fill();x.stroke();
+
+ // 舊式標題列
+ x.fillStyle="#d9c8aa";x.fillRect(87,107,906,92);
+ x.fillStyle="#6b5840";x.textAlign="left";
+ x.font='bold 31px Arial,"Microsoft JhengHei",sans-serif';
+ x.fillText("♥ MY YOUTH MEMORY",125,164);
+ ["#b78372","#d2b57c","#91a28b"].forEach((col,i)=>{
+   x.fillStyle=col;x.beginPath();x.arc(900+i*28,153,8,0,Math.PI*2);x.fill();
+ });
+
+ // 年份大字
+ const year=(title.match(/\d{4}/)||["青春"])[0];
+ x.textAlign="center";x.fillStyle="#78634a";
+ x.font='bold 118px Georgia,"Times New Roman",serif';x.fillText(year,540,365);
+ x.font='27px Arial,"Microsoft JhengHei",sans-serif';x.fillStyle="#a08c72";
+ x.fillText("— those were the days —",540,415);
+
+ // 拍立得區塊
+ x.save();x.translate(540,655);x.rotate(-0.025);
+ x.shadowColor="rgba(60,45,25,.16)";x.shadowBlur=18;x.shadowOffsetY=10;
+ x.fillStyle="#fffdf7";x.fillRect(-330,-155,660,350);
+ x.shadowColor="transparent";
+ x.fillStyle="#e8dfce";x.fillRect(-295,-120,590,180);
+ // 裝飾星點
+ x.fillStyle="#b89c72";x.font='48px serif';x.fillText("✦   ♡   ✦",0,-15);
+ x.fillStyle="#4d4439";x.font='bold 39px Arial,"Microsoft JhengHei",sans-serif';
+ let clean=title.replace(/^我在\s*/,"").replace(/年找回/," 年 · 找回");
+ x.fillText(clean,0,105);
+ x.restore();
+
+ // 資訊
+ x.fillStyle="#5e5142";x.textAlign="center";x.font='29px Arial,"Microsoft JhengHei",sans-serif';
+ meta.split("\n").filter(Boolean).forEach((l,i)=>x.fillText(l.trim(),540,905+i*50));
+
+ x.strokeStyle="#d2c4ae";x.lineWidth=2;x.beginPath();x.moveTo(190,1035);x.lineTo(890,1035);x.stroke();
+
+ x.fillStyle="#756552";x.font='italic 28px Georgia,"Microsoft JhengHei",serif';
+ x.fillText("「那些以為消失的日子，原來只是被時間藏起來了。」",540,1100);
+
+ // 舊網站人氣計數器風格
+ x.fillStyle="#eee5d4";x.fillRect(330,1145,420,48);
+ x.fillStyle="#766653";x.font='22px monospace';
+ x.fillText("♥ YOUTH MEMORY  /  REWIND",540,1177);
+
+ x.fillStyle="#9a8871";x.font='22px Arial,"Microsoft JhengHei",sans-serif';
+ x.fillText("青春時光機 · Created by @pity.0326",540,1270);
+
+ const a=document.createElement("a");a.download=`青春時光機_${year}.png`;a.href=c.toDataURL("image/png");a.click();
 }
 function render(d,cache=false){const r=document.getElementById("result");if(!d.found){const u=document.getElementById("username").value.trim(),t=document.querySelector('input[name=type]:checked').value;r.innerHTML=`<div class="box"><strong>🥹 ${selectedYear} 年沒有找到保存紀錄</strong><div class="small">不代表你的無名不存在。可能這一年沒有被完整保存，也可能紀錄在其他年份。</div><div class="result-actions"><button type="button" class="mini-btn primary" onclick="document.getElementById('result').innerHTML=''">換一年看看</button><a class="mini-btn" target="_blank" rel="noopener" href="${calendar(u,t)}">直接前往 Wayback</a></div></div>`;return}
 let h=`<div class="box"><strong>🎉 找到 ${selectedYear} 年的青春了！</strong>${cache?'<span class="badge">快取</span>':''}<div class="small">共找到 ${d.days.length} 個有保存紀錄的日期</div>`;
