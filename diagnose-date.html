@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>青春時光機｜精確日期診斷</title>
+<style>
+body{font-family:"Microsoft JhengHei",sans-serif;background:#11110f;color:#eee1c3;margin:0;padding:24px}
+.box{max-width:950px;margin:auto;background:#efe2c4;color:#30291f;padding:22px;border-radius:8px}
+.row{display:grid;grid-template-columns:2fr 1fr 1.2fr auto;gap:8px}
+input,select,button{padding:11px;box-sizing:border-box}
+button{background:#536a3d;color:white;border:0;border-radius:5px;font-weight:bold;cursor:pointer}
+pre{white-space:pre-wrap;word-break:break-word;background:#191815;color:#eee1c3;padding:14px;border-radius:6px;max-height:65vh;overflow:auto}
+.small{font-size:13px;color:#6d6250;line-height:1.7}.good{font-weight:bold;color:#41642f}
+@media(max-width:650px){.row{grid-template-columns:1fr}}
+</style></head>
+<body><div class="box">
+<h2>🎯 Wayback 精確日期診斷</h2>
+<p class="small">用已知存在的日期確認 Wayback 到底把紀錄掛在哪一種 URL。預設測試 baby217／相簿／2011-03-15。</p>
+<div class="row">
+<input id="u" value="baby217">
+<select id="t"><option value="album">相簿</option><option value="blog">網誌</option><option value="guestbook">留言板</option></select>
+<input id="d" value="2011-03-15">
+<button onclick="run()">開始診斷</button>
+</div>
+<div id="s" class="small" style="margin:14px 0"></div><pre id="o">尚未執行。</pre>
+</div>
+<script>
+async function run(){
+ const u=document.getElementById("u").value.trim(),t=document.getElementById("t").value,d=document.getElementById("d").value.replace(/\D/g,"");
+ const o=document.getElementById("o"),s=document.getElementById("s");o.textContent="診斷中…";s.textContent="";
+ try{
+  const r=await fetch(`/api/diagnose-date?username=${encodeURIComponent(u)}&type=${t}&date=${d}`,{cache:"no-store"});
+  const x=await r.json();
+  if(x.summary){
+   s.innerHTML=`測試 <b>${x.summary.tested}</b> 種 URL ／ HTTP 200：<b>${x.summary.http200}</b> ／ <span class="good">精確同日：${x.summary.exactDateMatches}</span> ／ 同年份：<b>${x.summary.sameYearMatches}</b>`;
+  }
+  o.textContent=JSON.stringify(x,null,2);
+ }catch(e){o.textContent="診斷失敗："+e}
+}
+</script></body></html>
