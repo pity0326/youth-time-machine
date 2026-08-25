@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>青春時光機</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Arial, "Microsoft JhengHei", sans-serif;
+      background: linear-gradient(135deg, #fff8f0, #eef6ff);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .card {
+      width: 100%;
+      max-width: 520px;
+      background: white;
+      padding: 40px 25px;
+      border-radius: 24px;
+      box-shadow: 0 10px 35px rgba(0,0,0,0.08);
+      text-align: center;
+    }
+
+    h1 {
+      font-size: 34px;
+      margin-bottom: 10px;
+    }
+
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+      line-height: 1.7;
+    }
+
+    input {
+      width: 100%;
+      padding: 16px;
+      font-size: 17px;
+      border: 2px solid #ddd;
+      border-radius: 12px;
+      outline: none;
+    }
+
+    input:focus {
+      border-color: #555;
+    }
+
+    button {
+      width: 100%;
+      margin-top: 15px;
+      padding: 16px;
+      border: 0;
+      border-radius: 12px;
+      font-size: 18px;
+      font-weight: bold;
+      cursor: pointer;
+      background: #222;
+      color: white;
+    }
+
+    button:hover {
+      opacity: .85;
+    }
+
+    .memory {
+      margin-top: 30px;
+      font-size: 14px;
+      color: #999;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="card">
+
+    <h1>🕰️ 青春時光機</h1>
+
+    <div class="subtitle">
+      找回那些年，留在網路上的青春。<br>
+      輸入你以前的無名小站帳號。
+    </div>
+
+    <input
+      id="username"
+      type="text"
+      placeholder="例如：abc123"
+    >
+
+    <button onclick="searchWretch()">
+      尋找我的青春
+    </button>
+
+    <div class="memory">
+      無名相簿・無名網誌・無名留言板
+    </div>
+
+  </div>
+
+  <script>
+    function searchWretch() {
+
+      const username =
+        document.getElementById("username").value.trim();
+
+      if (!username) {
+        alert("請輸入你的無名帳號");
+        return;
+      }
+
+      const oldUrl =
+        "http://www.wretch.cc/blog/" +
+        encodeURIComponent(username);
+
+      const wayback =
+        "https://web.archive.org/web/*/" +
+        oldUrl;
+
+      window.open(wayback, "_blank");
+    }
+  </script>
+
+</body>
+</html>
