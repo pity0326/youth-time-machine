@@ -792,16 +792,9 @@ async function rescuePhotos(){
     if(!res.ok||!d.ok)throw new Error(d.error||"照片搜尋失敗");
 
     if(!d.photos?.length){
-      const dg=d.diagnostic||{};
-      status.innerHTML="🥲 這次沒有找到可救回的照片縮圖。<br><span class='small'>不代表以前沒有照片，下面的診斷資訊可以看出卡在哪一步。</span>";
+      status.innerHTML="🕰️ <strong>這次沒有成功連上舊相簿</strong><br><span class='small'>Internet Archive 目前可能比較忙，這不代表以前沒有照片。</span>";
       grid.innerHTML=`<div class="photo-rescue-empty">
-        <strong>照片牆診斷</strong><br>
-        可讀相簿頁：${dg.entryPages??dg.rootPages??0} 頁<br>
-        找到相簿編號：${dg.bookCount??0} 本<br>
-        成功讀取相簿內頁：${dg.albumPages??0} 頁<br>
-        找到縮圖網址：${dg.thumbCount??0} 張<br>
-        Wayback 可用照片：${dg.recoveredCount??0} 張<br>
-        <span class="small">狀態：${dg.stage||d.reason||"unknown"}</span>
+        可以稍後再試，成功找回的照片紀錄會保存到雲端，之後同帳號、同年份再次搜尋會更穩定。
         <div class="result-actions" style="justify-content:center;margin-top:12px">
           <button type="button" class="mini-btn primary" onclick="rescuePhotos()">🔄 再找一次</button>
         </div>
