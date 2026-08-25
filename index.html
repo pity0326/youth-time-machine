@@ -934,6 +934,32 @@ async function getYearCloudCache(username,type,year){
   }catch{return null}
 }
 
+
+function showBackgroundSearchStatus(done,total=4){
+  let el=document.getElementById("backgroundSearchStatus");
+  if(!el){
+    el=document.createElement("div");
+    el.id="backgroundSearchStatus";
+    el.className="note";
+    el.style.margin="12px 0";
+    el.style.padding="10px 14px";
+    const result=document.getElementById("result");
+    if(result)result.prepend(el);
+  }
+
+  if(done<total){
+    el.innerHTML=`⏳ <strong>仍在補找其他紀錄…</strong>
+      <span class="small">目前進度：${done} / ${total}。已找到的紀錄會先顯示，搜尋完成後會自動合併。</span>`;
+  }else{
+    el.innerHTML=`✅ <strong>全年搜尋完成</strong>
+      <span class="small">四個季度都已搜尋完成；目前畫面已合併這次找到的紀錄。</span>`;
+    setTimeout(()=>{
+      const current=document.getElementById("backgroundSearchStatus");
+      if(current)current.remove();
+    },4500);
+  }
+}
+
 async function searchYear(){
   const u=document.getElementById("username").value.trim();
   const t=document.querySelector('input[name=type]:checked').value;
@@ -1000,6 +1026,7 @@ async function searchYear(){
     if(cloud?.found){
       mergeDays(cloud.days);
       render(makeData(true,true));
+      showBackgroundSearchStatus(completed,4);
     }
 
     // 2. 再讀這台裝置舊的 localStorage；若電腦曾找到、雲端沒有，
@@ -1010,6 +1037,7 @@ async function searchYear(){
         const added=mergeDays(local.data.days);
         if(added){
           render(makeData(true,true));
+      showBackgroundSearchStatus(completed,4);
           saveYearCloudCache(u,t,selectedYear,makeData(true,false));
         }
       }
@@ -1027,6 +1055,7 @@ async function searchYear(){
         if(added){
           const current=makeData(true,cloud?.found===true);
           render(current);
+          showBackgroundSearchStatus(completed,4);
           saveYearCloudCache(u,t,selectedYear,current);
         }
       }catch(e){
@@ -1036,6 +1065,7 @@ async function searchYear(){
         completed++;
         const p=document.getElementById("yearProgress");
         if(p)p.textContent=`${completed} / 4`;
+        if(mergedDays.length)showBackgroundSearchStatus(completed,4);
       }
     }
 
@@ -1053,6 +1083,7 @@ async function searchYear(){
     }
 
     render(finalData);
+    if(finalData.found)showBackgroundSearchStatus(4,4);
 
   }catch(e){
     if(e.name==="AbortError"){
