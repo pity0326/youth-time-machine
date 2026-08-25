@@ -50,6 +50,66 @@ module.exports=async function(req,res){
   if(!exactDate && !/^[1-4]$/.test(part))return res.status(400).json({error:"分段"});
   if(exactDate && !/^\d{8}$/.test(exactDate))return res.status(400).json({error:"exactDate 請用 YYYYMMDD"});
 
+  if(String(req.query.accountCheck||"")==="1"){
+    const names=[username,username.toLowerCase()];
+    const targets=[...new Set(names.flatMap(name=>[
+      `http://wretch.cc/${type}/${name}`,
+      `http://www.wretch.cc/${type}/${name}`,
+      `http://wretch.cc:80/${type}/${name}`,
+      `http://www.wretch.cc:80/${type}/${name}`
+    ]))];
+
+    // Spread probes across Wretch's active years.
+    // A hit is useful positive evidence; a miss is never treated as proof of non-existence.
+    const probeDates=[
+      "20130115","20120115","20110115","20100115",
+      "20090115","20080115","20070115","20060115"
+    ];
+
+    const evidence=[];
+    const seen=new Set();
+
+    for(const stamp of probeDates){
+      for(let i=0;i<targets.length;i+=2){
+        const batch=targets.slice(i,i+2);
+        const got=await Promise.all(batch.map(async target=>{
+          const hit=await availability(target,stamp,3200);
+          if(!hit?.timestamp)return null;
+          const key=String(hit.timestamp)+"|"+String(hit.url||"");
+          if(seen.has(key))return null;
+          seen.add(key);
+          return {
+            target,
+            requested:stamp,
+            timestamp:String(hit.timestamp),
+            url:String(hit.url||"")
+          };
+        }));
+        evidence.push(...got.filter(Boolean));
+        if(evidence.length>=3)break;
+        await sleep(90);
+      }
+      if(evidence.length>=3)break;
+    }
+
+    const years=[...new Set(
+      evidence.map(x=>String(x.timestamp||"").slice(0,4)).filter(y=>/^\d{4}$/.test(y))
+    )].sort();
+
+    return res.status(200).json({
+      mode:"accountCheck",
+      username,
+      type,
+      hasEvidence:evidence.length>0,
+      evidence:evidence.slice(0,3),
+      years,
+      conclusive:false,
+      note:evidence.length
+        ?"找到 Wayback 保存線索，這個帳號很可能正確。"
+        :"快速排查沒有找到保存線索；可能是帳號拼錯、此類型沒有被保存，或 Internet Archive 暫時沒有回傳。"
+    });
+  }
+
   if(exactDate){
     const testTargets=[...new Set([
       `http://wretch.cc/${type}/${username}`,
