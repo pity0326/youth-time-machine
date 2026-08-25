@@ -42,11 +42,52 @@ module.exports=async function(req,res){
   const type=String(req.query.type||"");
   const year=String(req.query.year||"");
   const part=String(req.query.part||"");
+  const exactDate=String(req.query.exactDate||"").replace(/\D/g,"");
 
   if(!/^[A-Za-z0-9._-]{1,80}$/.test(username))return res.status(400).json({error:"帳號格式"});
   if(!["album","blog","guestbook"].includes(type))return res.status(400).json({error:"類型"});
   if(!/^(200[3-9]|201[0-4])$/.test(year))return res.status(400).json({error:"年份"});
-  if(!/^[1-4]$/.test(part))return res.status(400).json({error:"分段"});
+  if(!exactDate && !/^[1-4]$/.test(part))return res.status(400).json({error:"分段"});
+  if(exactDate && !/^\d{8}$/.test(exactDate))return res.status(400).json({error:"exactDate 請用 YYYYMMDD"});
+
+  if(exactDate){
+    const testTargets=[...new Set([
+      `http://wretch.cc/${type}/${username}`,
+      `http://www.wretch.cc/${type}/${username}`,
+      `http://wretch.cc:80/${type}/${username}`,
+      `http://www.wretch.cc:80/${type}/${username}`,
+      `http://wretch.cc/${type}/${username.toLowerCase()}`,
+      `http://www.wretch.cc/${type}/${username.toLowerCase()}`,
+      `http://wretch.cc:80/${type}/${username.toLowerCase()}`,
+      `http://www.wretch.cc:80/${type}/${username.toLowerCase()}`
+    ])];
+
+    const results=[];
+    for(let i=0;i<testTargets.length;i+=2){
+      const batch=testTargets.slice(i,i+2);
+      const got=await Promise.all(batch.map(async target=>{
+        const hit=await availability(target,exactDate,5000);
+        return {
+          target,
+          hit,
+          sameDate:!!hit && String(hit.timestamp||"").slice(0,8)===exactDate
+        };
+      }));
+      results.push(...got);
+      await sleep(180);
+    }
+
+    const exactMatches=results.filter(x=>x.sameDate);
+    return res.status(200).json({
+      mode:"exactDate",
+      username,
+      type,
+      exactDate,
+      tested:results.length,
+      exactMatches:exactMatches.length,
+      results
+    });
+  }
 
   const quarter={"1":[1,2,3],"2":[4,5,6],"3":[7,8,9],"4":[10,11,12]}[part];
 
