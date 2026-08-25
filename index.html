@@ -127,7 +127,7 @@ function downloadShareCard(){
   const x=c.getContext("2d");
   x.scale(SCALE,SCALE);
 
-  const kai='"BiauKai","Kaiti TC","DFKai-SB","KaiTi","STKaiti","Microsoft JhengHei",serif';
+  const kai='"Kaiti TC","BiauKai","DFKai-SB","Microsoft JhengHei","PingFang TC",serif';
   const sans='"PingFang TC","Microsoft JhengHei","Noto Sans TC",Arial,sans-serif';
 
   // 背景：舊紙張
@@ -232,51 +232,51 @@ function downloadShareCard(){
 
   // 右側拍立得，縮小並不會壓到文字
   x.save();
-  x.translate(792,468);
+  x.translate(850,455);
   x.rotate(0.055);
 
   x.shadowColor="rgba(45,35,18,.19)";
   x.shadowBlur=15;
   x.shadowOffsetY=8;
   x.fillStyle="#fffdf6";
-  x.fillRect(-168,-172,336,392);
+  x.fillRect(-125,-135,250,300);
   x.shadowColor="transparent";
 
   // 照片天空/草地
-  const sky=x.createLinearGradient(0,-138,0,92);
+  const sky=x.createLinearGradient(0,-102,0,64);
   sky.addColorStop(0,"#73a8c5");
   sky.addColorStop(.62,"#b7d0d5");
   sky.addColorStop(1,"#d6d6a7");
   x.fillStyle=sky;
-  x.fillRect(-141,-141,282,225);
+  x.fillRect(-103,-105,206,165);
 
   x.fillStyle="#70904f";
   x.beginPath();
-  x.moveTo(-141,54);
-  x.quadraticCurveTo(0,8,141,55);
-  x.lineTo(141,84);
-  x.lineTo(-141,84);
+  x.moveTo(-103,35);
+  x.quadraticCurveTo(0,5,103,36);
+  x.lineTo(103,60);
+  x.lineTo(-103,60);
   x.closePath();
   x.fill();
 
   // 小樹
   x.fillStyle="#3f5f35";
-  x.fillRect(88,27,6,43);
-  x.beginPath();x.arc(91,24,22,0,Math.PI*2);x.fill();
+  x.fillRect(66,18,5,31);
+  x.beginPath();x.arc(69,16,16,0,Math.PI*2);x.fill();
 
   x.fillStyle="#665640";
   x.textAlign="center";
-  x.font='22px Georgia,serif';
-  x.fillText("those were the days",0,151);
+  x.font='17px Georgia,serif';
+  x.fillText("those were the days",0,112);
 
   x.restore();
 
   // 膠帶
   x.save();
-  x.translate(792,285);
+  x.translate(850,320);
   x.rotate(.06);
   x.fillStyle="rgba(207,176,103,.74)";
-  x.fillRect(-90,-17,180,34);
+  x.fillRect(-65,-13,130,26);
   x.restore();
 
   // 復古印章
