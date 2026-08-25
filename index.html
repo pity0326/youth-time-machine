@@ -107,69 +107,269 @@ function buildShareCard(data,u,t,y){
  <div class="result-actions"><button type="button" class="mini-btn primary" onclick="downloadShareCard()">📸 產生我的青春卡片</button></div></div>`;
 }
 function downloadShareCard(){
- const card=document.getElementById("shareCard");if(!card)return;
- const title=card.querySelector(".big").textContent;
- const meta=card.querySelector(".meta").innerText;
- const year=(title.match(/\d{4}/)||["青春"])[0];
- const count=(title.match(/找回\s*(\d+)/)||["","0"])[1];
+  const card=document.getElementById("shareCard");
+  if(!card)return;
 
- const c=document.createElement("canvas");c.width=1080;c.height=1350;const x=c.getContext("2d");
+  const title=card.querySelector(".big").textContent;
+  const meta=card.querySelector(".meta").innerText;
+  const year=(title.match(/\d{4}/)||["青春"])[0];
+  const count=(title.match(/找回\s*(\d+)/)||["","0"])[1];
+  const lines=meta.split("\n").filter(Boolean);
+  const typeLine=lines[0]||"📷 相簿";
+  const accountLine=lines[1]||"♣ 無名帳號";
 
- // 泛黃紙張
- x.fillStyle="#f2ead8";x.fillRect(0,0,1080,1350);
- for(let i=0;i<6500;i++){x.fillStyle=`rgba(90,70,45,${Math.random()*.022})`;x.fillRect(Math.random()*1080,Math.random()*1350,1.5,1.5)}
+  // 2x 高畫質輸出：實際 2160 × 2700，IG/Threads 壓縮後仍清楚
+  const SCALE=2;
+  const W=1080,H=1350;
+  const c=document.createElement("canvas");
+  c.width=W*SCALE;
+  c.height=H*SCALE;
+  const x=c.getContext("2d");
+  x.scale(SCALE,SCALE);
 
- // 外框
- x.strokeStyle="#82765d";x.lineWidth=4;x.strokeRect(42,42,996,1266);
+  const kai='"BiauKai","Kaiti TC","DFKai-SB","KaiTi","STKaiti","Microsoft JhengHei",serif';
+  const sans='"PingFang TC","Microsoft JhengHei","Noto Sans TC",Arial,sans-serif';
 
- // 2000年代個人網站風頂欄
- x.fillStyle="#496842";x.fillRect(44,44,992,116);
- x.fillStyle="#fff7e7";x.textAlign="left";x.font='bold 42px Arial,"Microsoft JhengHei",sans-serif';x.fillText("青春時光機",80,102);
- x.font='19px monospace';x.fillText("YOUTH-TIME-MACHINE",82,134);
- x.textAlign="right";x.font='23px Arial,"Microsoft JhengHei",sans-serif';x.fillText("網誌　相簿　好友　留言板",990,112);
+  // 背景：舊紙張
+  x.fillStyle="#eee3c9";
+  x.fillRect(0,0,W,H);
+  for(let i=0;i<8500;i++){
+    const a=Math.random()*0.028;
+    x.fillStyle=`rgba(86,65,36,${a})`;
+    x.fillRect(Math.random()*W,Math.random()*H,1,1);
+  }
 
- // 筆記紙主體
- x.fillStyle="#fbf6e9";x.fillRect(78,198,924,690);
- x.strokeStyle="#c6b99d";x.lineWidth=2;x.strokeRect(78,198,924,690);
- // 淡格線
- x.strokeStyle="rgba(110,100,75,.12)";x.lineWidth=1;
- for(let yy=230;yy<888;yy+=34){x.beginPath();x.moveTo(78,yy);x.lineTo(1002,yy);x.stroke()}
- for(let xx=110;xx<1002;xx+=34){x.beginPath();x.moveTo(xx,198);x.lineTo(xx,888);x.stroke()}
+  // 外框
+  x.strokeStyle="#806f50";
+  x.lineWidth=3;
+  x.strokeRect(31,31,1018,1288);
 
- // 左側文字
- x.textAlign="left";x.fillStyle="#554a3c";x.font='30px Arial,"Microsoft JhengHei",sans-serif';x.fillText("★ 我的青春時光機",125,270);
- x.font='bold 61px Arial,"Microsoft JhengHei",sans-serif';x.fillText("我在",125,380);
- x.fillStyle="#496842";x.font='bold 104px Georgia,serif';x.fillText(year,250,390);
- x.fillStyle="#554a3c";x.font='bold 57px Arial,"Microsoft JhengHei",sans-serif';x.fillText("年",500,380);
- x.fillText("找回",125,480);
- x.fillStyle="#b86f72";x.font='bold 94px Georgia,serif';x.fillText(count,270,490);
- x.fillStyle="#554a3c";x.font='bold 50px Arial,"Microsoft JhengHei",sans-serif';x.fillText("個青春紀錄",370,480);
+  // 頂部：舊個人網站標頭
+  x.fillStyle="#f3ead6";
+  x.fillRect(34,34,1012,96);
+  x.fillStyle="#2f6137";
+  x.textAlign="left";
+  x.font=`bold 42px ${kai}`;
+  x.fillText("青春時光機",68,84);
+  x.font='18px monospace';
+  x.fillText("YOUTH-TIME-MACHINE",70,111);
 
- // 右側拍立得
- x.save();x.translate(780,470);x.rotate(.045);
- x.shadowColor="rgba(50,40,25,.22)";x.shadowBlur=15;x.shadowOffsetY=8;
- x.fillStyle="#fffdf5";x.fillRect(-175,-180,350,410);x.shadowColor="transparent";
- const sky=x.createLinearGradient(0,-150,0,90);sky.addColorStop(0,"#91b8c9");sky.addColorStop(1,"#d8e0c7");x.fillStyle=sky;x.fillRect(-145,-145,290,235);
- x.fillStyle="#789060";x.beginPath();x.moveTo(-145,55);x.quadraticCurveTo(0,10,145,58);x.lineTo(145,90);x.lineTo(-145,90);x.closePath();x.fill();
- x.fillStyle="#6a5d4c";x.font='23px Georgia,serif';x.textAlign="center";x.fillText("those were the days",0,155);
- x.restore();
+  x.textAlign="right";
+  x.font=`24px ${sans}`;
+  x.fillText("網誌　相簿　好友　留言板",1000,88);
 
- // 帳號資訊
- x.textAlign="left";x.fillStyle="#5f5749";x.font='28px Arial,"Microsoft JhengHei",sans-serif';
- meta.split("\n").filter(Boolean).forEach((l,i)=>x.fillText(l.trim(),125,610+i*54));
+  // 深綠分隔帶
+  x.fillStyle="#315f37";
+  x.fillRect(34,130,1012,42);
 
- // 下半部留言板感
- x.fillStyle="#f8f1df";x.fillRect(95,925,890,240);x.strokeStyle="#b9aa8d";x.setLineDash([8,7]);x.strokeRect(95,925,890,240);x.setLineDash([]);
- x.fillStyle="#496842";x.font='bold 28px Arial,"Microsoft JhengHei",sans-serif';x.fillText("那些年的你...",135,985);
- x.fillStyle="#574e41";x.font='31px Arial,"Microsoft JhengHei",sans-serif';x.fillText("那些以為消失的日子，",135,1050);x.fillText("原來只是被時間藏起來了。",135,1100);
- x.fillStyle="#b86f72";x.font='44px serif';x.fillText("♡  ♡  ♡",710,1080);
+  // 主體活頁紙
+  x.fillStyle="#f8f0dc";
+  x.fillRect(62,190,956,720);
+  x.strokeStyle="#b9aa89";
+  x.lineWidth=2;
+  x.strokeRect(62,190,956,720);
 
- // 舊人氣計數器
- x.fillStyle="#496842";x.fillRect(120,1205,420,62);
- x.fillStyle="#fff8e9";x.font='23px monospace';x.fillText(`♥ TODAY ${count}   TOTAL ${String(count).padStart(4,"0")}`,145,1244);
- x.fillStyle="#6f624f";x.textAlign="right";x.font='22px Arial,"Microsoft JhengHei",sans-serif';x.fillText("青春時光機  Created by @pity.0326",960,1245);
+  // 方格
+  x.strokeStyle="rgba(105,91,64,.12)";
+  x.lineWidth=1;
+  for(let yy=220;yy<910;yy+=32){
+    x.beginPath();x.moveTo(62,yy);x.lineTo(1018,yy);x.stroke();
+  }
+  for(let xx=94;xx<1018;xx+=32){
+    x.beginPath();x.moveTo(xx,190);x.lineTo(xx,910);x.stroke();
+  }
 
- const a=document.createElement("a");a.download=`青春時光機_${year}.png`;a.href=c.toDataURL("image/png");a.click();
+  // 左側活頁孔
+  for(let yy=225;yy<885;yy+=54){
+    x.fillStyle="#8d7a56";
+    x.beginPath();x.arc(69,yy,9,0,Math.PI*2);x.fill();
+  }
+
+  // 撕紙標籤
+  x.fillStyle="#f3e8cc";
+  x.beginPath();
+  x.moveTo(112,228);x.lineTo(470,220);x.lineTo(484,271);x.lineTo(120,278);x.closePath();
+  x.fill();
+  x.fillStyle="#4c4234";
+  x.textAlign="left";
+  x.font=`36px ${kai}`;
+  x.fillText("★ 我的青春時光機",132,263);
+
+  // 主標題區：固定左側寬度，完全避開拍立得
+  x.fillStyle="#4b4032";
+  x.font=`58px ${kai}`;
+  x.fillText("我在",130,390);
+
+  x.fillStyle="#2f6137";
+  x.font=`bold 94px ${kai}`;
+  x.fillText(year,252,397);
+
+  x.fillStyle="#4b4032";
+  x.font=`58px ${kai}`;
+  x.fillText("年",472,390);
+
+  x.fillText("找回",130,500);
+  x.fillStyle="#c06c72";
+  x.font=`bold 86px ${kai}`;
+  x.fillText(count,270,507);
+
+  x.fillStyle="#4b4032";
+  x.font=`48px ${kai}`;
+  x.fillText("個青春紀錄",365,500);
+
+  // 綠色手繪分隔線
+  x.strokeStyle="#3e6b43";
+  x.lineWidth=3;
+  x.setLineDash([7,6]);
+  x.beginPath();x.moveTo(130,548);x.lineTo(555,548);x.stroke();
+  x.setLineDash([]);
+
+  // 左側資訊
+  x.fillStyle="#5d5140";
+  x.font=`29px ${sans}`;
+  x.fillText(typeLine,132,612);
+  x.fillText(accountLine,132,668);
+
+  // 右側拍立得，縮小並不會壓到文字
+  x.save();
+  x.translate(792,468);
+  x.rotate(0.055);
+
+  x.shadowColor="rgba(45,35,18,.19)";
+  x.shadowBlur=15;
+  x.shadowOffsetY=8;
+  x.fillStyle="#fffdf6";
+  x.fillRect(-168,-172,336,392);
+  x.shadowColor="transparent";
+
+  // 照片天空/草地
+  const sky=x.createLinearGradient(0,-138,0,92);
+  sky.addColorStop(0,"#73a8c5");
+  sky.addColorStop(.62,"#b7d0d5");
+  sky.addColorStop(1,"#d6d6a7");
+  x.fillStyle=sky;
+  x.fillRect(-141,-141,282,225);
+
+  x.fillStyle="#70904f";
+  x.beginPath();
+  x.moveTo(-141,54);
+  x.quadraticCurveTo(0,8,141,55);
+  x.lineTo(141,84);
+  x.lineTo(-141,84);
+  x.closePath();
+  x.fill();
+
+  // 小樹
+  x.fillStyle="#3f5f35";
+  x.fillRect(88,27,6,43);
+  x.beginPath();x.arc(91,24,22,0,Math.PI*2);x.fill();
+
+  x.fillStyle="#665640";
+  x.textAlign="center";
+  x.font='22px Georgia,serif';
+  x.fillText("those were the days",0,151);
+
+  x.restore();
+
+  // 膠帶
+  x.save();
+  x.translate(792,285);
+  x.rotate(.06);
+  x.fillStyle="rgba(207,176,103,.74)";
+  x.fillRect(-90,-17,180,34);
+  x.restore();
+
+  // 復古印章
+  x.save();
+  x.translate(598,732);
+  x.rotate(-.08);
+  x.strokeStyle="#315f37";
+  x.lineWidth=4;
+  x.beginPath();x.arc(0,0,72,0,Math.PI*2);x.stroke();
+  x.beginPath();x.arc(0,0,60,0,Math.PI*2);x.stroke();
+  x.fillStyle="#315f37";
+  x.textAlign="center";
+  x.font=`19px ${kai}`;
+  x.fillText("青春不打烊",0,-18);
+  x.font='bold 29px Georgia,serif';
+  x.fillText("Since",0,14);
+  x.font='bold 38px Georgia,serif';
+  x.fillText("2005",0,50);
+  x.restore();
+
+  // 右下小星星
+  x.fillStyle="#3c663e";
+  x.textAlign="center";
+  x.font='44px serif';
+  x.fillText("☆",945,790);
+
+  // 下半部留言紙
+  x.fillStyle="#f7eed9";
+  x.fillRect(93,950,894,250);
+  x.strokeStyle="#baa989";
+  x.lineWidth=2;
+  x.setLineDash([8,7]);
+  x.strokeRect(93,950,894,250);
+  x.setLineDash([]);
+
+  // 紙膠帶標題
+  x.fillStyle="#35613a";
+  x.fillRect(125,972,245,50);
+  x.fillStyle="#fff4df";
+  x.textAlign="left";
+  x.font=`bold 29px ${kai}`;
+  x.fillText("那些年的你…",151,1007);
+
+  // 懷舊手寫句
+  x.fillStyle="#4f4537";
+  x.font=`35px ${kai}`;
+  x.fillText("那些以為消失的日子，",137,1080);
+  x.fillText("原來只是被時間藏起來了。",137,1132);
+
+  // 愛心
+  x.fillStyle="#c66f74";
+  x.font='47px serif';
+  x.fillText("♡  ♡  ♡  ♡",700,1110);
+
+  // 底部像素小圖標
+  x.fillStyle="#365f3b";
+  x.fillRect(98,1225,68,68);
+  x.fillStyle="#f3e5c9";
+  x.fillRect(111,1240,42,36);
+  x.fillStyle="#365f3b";
+  x.fillRect(116,1251,7,7);
+  x.fillRect(140,1251,7,7);
+
+  // TODAY / TOTAL 舊人氣計數器
+  x.fillStyle="#315f37";
+  x.fillRect(194,1230,390,59);
+  x.fillStyle="#fff5dc";
+  x.font='22px monospace';
+  x.fillText(`♥ TODAY ${count}   TOTAL ${String(count).padStart(4,"0")}`,219,1267);
+
+  // 綠色吊牌
+  x.save();
+  x.translate(790,1230);
+  x.rotate(-.025);
+  x.fillStyle="#365f3b";
+  x.fillRect(-165,-29,330,58);
+  x.fillStyle="#f7edda";
+  x.textAlign="center";
+  x.font='21px Georgia,serif';
+  x.fillText("YOUTH MEMORY / REWIND",0,7);
+  x.restore();
+
+  // 製作者
+  x.fillStyle="#6d604e";
+  x.textAlign="right";
+  x.font=`20px ${sans}`;
+  x.fillText("青春時光機 · Created by @pity.0326",990,1322);
+
+  // 匯出 PNG
+  const a=document.createElement("a");
+  a.download=`青春時光機_${year}.png`;
+  a.href=c.toDataURL("image/png");
+  a.click();
 }
 function render(d,cache=false){const r=document.getElementById("result");if(!d.found){const u=document.getElementById("username").value.trim(),t=document.querySelector('input[name=type]:checked').value;r.innerHTML=`<div class="box"><strong>🥹 ${selectedYear} 年沒有找到保存紀錄</strong><div class="small">不代表你的無名不存在。可能這一年沒有被完整保存，也可能紀錄在其他年份。</div><div class="result-actions"><button type="button" class="mini-btn primary" onclick="document.getElementById('result').innerHTML=''">換一年看看</button><a class="mini-btn" target="_blank" rel="noopener" href="${calendar(u,t)}">直接前往 Wayback</a></div></div>`;return}
 let h=`<div class="box"><strong>🎉 找到 ${selectedYear} 年的青春了！</strong>${cache?'<span class="badge">快取</span>':''}<div class="small">共找到 ${d.days.length} 個有保存紀錄的日期</div>`;
