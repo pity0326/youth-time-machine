@@ -473,7 +473,7 @@ input[type=text]:focus{border-color:#4f6840}
 </div>
 
 <script>
-let selectedYear="2013",activeController=null,timerId=null,startedAt=0;
+let selectedYear="2013",activeController=null,timerId=null,startedAt=0,lastAlbumTimestamp="";
 function makeYearButton(y,container){const b=document.createElement("button");b.type="button";b.className="year"+(String(y)===selectedYear?" active":"");b.textContent=y;b.onclick=()=>{selectedYear=String(y);document.querySelectorAll(".year").forEach(x=>x.classList.remove("active"));b.classList.add("active")};container.appendChild(b)}
 const main=document.getElementById("mainYears");[2009,2010,2011,2012,2013].forEach(y=>makeYearButton(y,main));
 const older=document.getElementById("olderYears");[2003,2004,2005,2006,2007,2008].forEach(y=>makeYearButton(y,older));
@@ -759,7 +759,12 @@ function downloadShareCard(){
   a.href=c.toDataURL("image/png");
   a.click();
 }
-function render(d,cache=false){const r=document.getElementById("result");if(!d.found){const u=document.getElementById("username").value.trim(),t=document.querySelector('input[name=type]:checked').value;r.innerHTML=`<div class="box"><strong>🔎 沒有找到 ${u} 在 ${selectedYear} 年的保存紀錄</strong><div class="small">請先確認帳號有沒有打錯字。若帳號正確，可能是這一年沒有被 Internet Archive 保存，也可以換其他年份或「相簿／網誌／留言板」再試試。</div><div class="result-actions"><button type="button" class="mini-btn primary" onclick="document.getElementById('username').focus()">確認帳號</button><button type="button" class="mini-btn" onclick="document.getElementById('result').innerHTML=''">換年份看看</button><a class="mini-btn" target="_blank" rel="noopener" href="${calendar(u,t)}">直接前往 Wayback</a></div></div>`;return}
+function render(d,cache=false){const r=document.getElementById("result");
+if(d?.found && Array.isArray(d.days) && d.days.length){
+  const sameYear=d.days.filter(x=>String(x.timestamp||"").startsWith(String(selectedYear)));
+  const pick=(sameYear.length?sameYear:d.days).slice().sort((a,b)=>String(a.timestamp).localeCompare(String(b.timestamp))).pop();
+  if(pick?.timestamp) lastAlbumTimestamp=String(pick.timestamp);
+}if(!d.found){const u=document.getElementById("username").value.trim(),t=document.querySelector('input[name=type]:checked').value;r.innerHTML=`<div class="box"><strong>🔎 沒有找到 ${u} 在 ${selectedYear} 年的保存紀錄</strong><div class="small">請先確認帳號有沒有打錯字。若帳號正確，可能是這一年沒有被 Internet Archive 保存，也可以換其他年份或「相簿／網誌／留言板」再試試。</div><div class="result-actions"><button type="button" class="mini-btn primary" onclick="document.getElementById('username').focus()">確認帳號</button><button type="button" class="mini-btn" onclick="document.getElementById('result').innerHTML=''">換年份看看</button><a class="mini-btn" target="_blank" rel="noopener" href="${calendar(u,t)}">直接前往 Wayback</a></div></div>`;return}
 let h=`<div class="box"><strong>🎉 找到 ${selectedYear} 年的青春了！</strong>${cache?'<span class="badge">快取</span>':''}<div class="small">共找到 ${d.days.length} 個有保存紀錄的日期</div>`;
 for(const m of Object.keys(d.months).sort()){h+=`<div class="month">${Number(m)} 月</div>`;for(const x of d.months[m])h+=`<a class="day" target="_blank" rel="noopener" href="${x.url}">${Number(x.day)} 日</a>`}
 h+=`<div class="small">點日期即可回到當天保存的無名頁面。</div>`;const u=document.getElementById("username").value.trim(),t=document.querySelector('input[name=type]:checked').value;
@@ -782,7 +787,7 @@ async function rescuePhotos(){
   status.innerHTML="⏳ 正在翻找你的青春照片…<br><span class='small'>舊照片需要逐張確認，第一次可能會稍微久一點。</span>";
 
   try{
-    const res=await fetch(`/api/photo-wall?username=${encodeURIComponent(u)}&year=${encodeURIComponent(selectedYear)}`,{cache:"no-store"});
+    const res=await fetch(`/api/photo-wall?username=${encodeURIComponent(u)}&year=${encodeURIComponent(selectedYear)}&ts=${encodeURIComponent(lastAlbumTimestamp||"")}`,{cache:"no-store"});
     const d=await res.json();
     if(!res.ok||!d.ok)throw new Error(d.error||"照片搜尋失敗");
 
