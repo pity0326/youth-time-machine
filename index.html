@@ -1,135 +1,216 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <title>青春時光機</title>
+<title>青春時光機｜找回你的無名小站</title>
 
-  <style>
-    * {
-      box-sizing: border-box;
-    }
+<style>
+* {
+  box-sizing: border-box;
+}
 
-    body {
-      margin: 0;
-      min-height: 100vh;
-      font-family: Arial, "Microsoft JhengHei", sans-serif;
-      background: linear-gradient(135deg, #fff8f0, #eef6ff);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-    }
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: Arial, "Microsoft JhengHei", sans-serif;
+  background: linear-gradient(135deg, #fff8f0, #eef6ff);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
 
-    .card {
-      width: 100%;
-      max-width: 520px;
-      background: white;
-      padding: 40px 25px;
-      border-radius: 24px;
-      box-shadow: 0 10px 35px rgba(0,0,0,0.08);
-      text-align: center;
-    }
+.card {
+  width: 100%;
+  max-width: 520px;
+  background: white;
+  padding: 38px 25px;
+  border-radius: 24px;
+  box-shadow: 0 10px 35px rgba(0,0,0,.08);
+  text-align: center;
+}
 
-    h1 {
-      font-size: 34px;
-      margin-bottom: 10px;
-    }
+h1 {
+  margin: 0 0 12px;
+  font-size: 34px;
+}
 
-    .subtitle {
-      color: #666;
-      margin-bottom: 30px;
-      line-height: 1.7;
-    }
+.subtitle {
+  color: #666;
+  line-height: 1.7;
+  margin-bottom: 26px;
+}
 
-    input {
-      width: 100%;
-      padding: 16px;
-      font-size: 17px;
-      border: 2px solid #ddd;
-      border-radius: 12px;
-      outline: none;
-    }
+input {
+  width: 100%;
+  padding: 16px;
+  border: 2px solid #ddd;
+  border-radius: 12px;
+  font-size: 17px;
+  outline: none;
+}
 
-    input:focus {
-      border-color: #555;
-    }
+input:focus {
+  border-color: #555;
+}
 
-    button {
-      width: 100%;
-      margin-top: 15px;
-      padding: 16px;
-      border: 0;
-      border-radius: 12px;
-      font-size: 18px;
-      font-weight: bold;
-      cursor: pointer;
-      background: #222;
-      color: white;
-    }
+.label {
+  margin: 22px 0 12px;
+  font-weight: bold;
+}
 
-    button:hover {
-      opacity: .85;
-    }
+.choices {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 9px;
+}
 
-    .memory {
-      margin-top: 30px;
-      font-size: 14px;
-      color: #999;
-    }
-  </style>
+.choice input {
+  display: none;
+}
+
+.choice span {
+  display: block;
+  padding: 14px 5px;
+  border: 2px solid #e5e5e5;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 15px;
+}
+
+.choice input:checked + span {
+  border-color: #222;
+  background: #222;
+  color: white;
+}
+
+button {
+  width: 100%;
+  margin-top: 22px;
+  padding: 16px;
+  border: 0;
+  border-radius: 12px;
+  background: #222;
+  color: white;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+button:hover {
+  opacity: .85;
+}
+
+.note {
+  margin-top: 22px;
+  color: #999;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+@media(max-width:420px) {
+  h1 {
+    font-size: 29px;
+  }
+}
+</style>
 </head>
 
 <body>
 
-  <div class="card">
+<div class="card">
 
-    <h1>🕰️ 青春時光機</h1>
+  <h1>🕰️ 青春時光機</h1>
 
-    <div class="subtitle">
-      找回那些年，留在網路上的青春。<br>
-      輸入你以前的無名小站帳號。
-    </div>
+  <div class="subtitle">
+    找回那些年，留在網路上的青春。<br>
+    還記得你的無名小站帳號嗎？
+  </div>
 
-    <input
-      id="username"
-      type="text"
-      placeholder="例如：abc123"
-    >
+  <input
+    id="username"
+    type="text"
+    placeholder="輸入你的無名帳號"
+    autocomplete="off"
+  >
 
-    <button onclick="searchWretch()">
-      尋找我的青春
-    </button>
+  <div class="label">
+    你想回去哪裡？
+  </div>
 
-    <div class="memory">
-      無名相簿・無名網誌・無名留言板
-    </div>
+  <div class="choices">
+
+    <label class="choice">
+      <input type="radio" name="type" value="album" checked>
+      <span>📷<br>相簿</span>
+    </label>
+
+    <label class="choice">
+      <input type="radio" name="type" value="blog">
+      <span>📝<br>網誌</span>
+    </label>
+
+    <label class="choice">
+      <input type="radio" name="type" value="guestbook">
+      <span>💬<br>留言板</span>
+    </label>
 
   </div>
 
-  <script>
-    function searchWretch() {
+  <button onclick="goBack()">
+    🔎 尋找我的青春
+  </button>
 
-      const username =
-        document.getElementById("username").value.trim();
+  <div class="note">
+    將透過 Internet Archive 尋找公開保存的歷史網頁。<br>
+    實際可查看內容取決於當年是否曾被保存。
+  </div>
 
-      if (!username) {
-        alert("請輸入你的無名帳號");
-        return;
-      }
+</div>
 
-      const oldUrl =
-        "http://www.wretch.cc/blog/" +
-        encodeURIComponent(username);
+<script>
 
-      const wayback =
-        "https://web.archive.org/web/*/" +
-        oldUrl;
+function goBack() {
 
-      window.open(wayback, "_blank");
+  const username =
+    document.getElementById("username").value.trim();
+
+  if (!username) {
+    alert("請先輸入你的無名帳號");
+    return;
+  }
+
+  const type =
+    document.querySelector(
+      'input[name="type"]:checked'
+    ).value;
+
+  const oldUrl =
+    "http://www.wretch.cc/" +
+    type +
+    "/" +
+    encodeURIComponent(username);
+
+  const wayback =
+    "https://web.archive.org/web/*/" +
+    oldUrl;
+
+  window.open(wayback, "_blank");
+}
+
+document
+  .getElementById("username")
+  .addEventListener("keydown", function(event) {
+
+    if (event.key === "Enter") {
+      goBack();
     }
-  </script>
+
+  });
+
+</script>
 
 </body>
 </html>
