@@ -1,54 +1,45 @@
 export default async function handler(req, res) {
   try {
-    const albumSnapshot =
-      "https://web.archive.org/web/20131227084024id_/http://www.wretch.cc/album/album.php?id=BaBy217&book=2";
+    const id = "1060718966";
 
-    const albumRes = await fetch(albumSnapshot, {
-      headers: {
-        "User-Agent": "Mozilla/5.0"
+    const candidates = [
+      {
+        name: "縮圖",
+        url: `http://f12.wretch.yimg.com/baby217/2/thumbs/t${id}.jpg`
+      },
+      {
+        name: "去掉 t 的縮圖路徑",
+        url: `http://f12.wretch.yimg.com/baby217/2/thumbs/${id}.jpg`
+      },
+      {
+        name: "相簿根目錄",
+        url: `http://f12.wretch.yimg.com/baby217/2/${id}.jpg`
+      },
+      {
+        name: "相簿根目錄 t 檔",
+        url: `http://f12.wretch.yimg.com/baby217/2/t${id}.jpg`
+      },
+      {
+        name: "photos 路徑",
+        url: `http://f12.wretch.yimg.com/baby217/2/photos/${id}.jpg`
+      },
+      {
+        name: "images 路徑",
+        url: `http://f12.wretch.yimg.com/baby217/2/images/${id}.jpg`
       }
-    });
+    ];
 
-    if (!albumRes.ok) {
-      return res.status(502).json({
-        ok: false,
-        error: "相簿頁讀取失敗",
-        status: albumRes.status
-      });
-    }
-
-    const albumHtml = await albumRes.text();
-
-    // 抓無名縮圖
-    const imgs = [
-      ...albumHtml.matchAll(/<img[^>]+src=["']([^"']+)["']/gi)
-    ].map(m => m[1]);
-
-    let thumbs = imgs
-      .filter(u =>
-        /wretch\.yimg\.com/i.test(u) &&
-        /thumbs/i.test(u) &&
-        /\.(jpg|jpeg|png|gif)/i.test(u)
-      )
-      .map(u => {
-        if (u.startsWith("//")) return "http:" + u;
-        if (u.startsWith("/")) return "http://www.wretch.cc" + u;
-        return u;
-      });
-
-    thumbs = [...new Set(thumbs)].slice(0, 30);
-
-    async function checkOne(imageUrl) {
+    async function checkWayback(item) {
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 6000);
+      const timer = setTimeout(() => controller.abort(), 7000);
 
       try {
         const api =
           "https://archive.org/wayback/available" +
-          "?url=" + encodeURIComponent(imageUrl) +
+          "?url=" + encodeURIComponent(item.url) +
           "&timestamp=20131227";
 
-        const r = await fetch(api, {
+        const response = await fetch(api, {
           headers: {
             "User-Agent": "Mozilla/5.0"
           },
@@ -57,15 +48,16 @@ export default async function handler(req, res) {
 
         clearTimeout(timer);
 
-        if (!r.ok) {
+        if (!response.ok) {
           return {
-            imageUrl,
+            name: item.name,
+            imageUrl: item.url,
             found: false,
-            status: r.status
+            status: response.status
           };
         }
 
-        const data = await r.json();
+        const data = await response.json();
 
         const closest =
           data &&
@@ -74,13 +66,15 @@ export default async function handler(req, res) {
 
         if (!closest || !closest.available) {
           return {
-            imageUrl,
+            name: item.name,
+            imageUrl: item.url,
             found: false
           };
         }
 
         return {
-          imageUrl,
+          name: item.name,
+          imageUrl: item.url,
           found: true,
           timestamp: closest.timestamp,
           archivedUrl: closest.url
@@ -90,7 +84,8 @@ export default async function handler(req, res) {
         clearTimeout(timer);
 
         return {
-          imageUrl,
+          name: item.name,
+          imageUrl: item.url,
           found: false,
           error:
             error.name === "AbortError"
@@ -100,25 +95,15 @@ export default async function handler(req, res) {
       }
     }
 
-    // 分批查，避免一次太多請求
-    const results = [];
-    const batchSize = 6;
-
-    for (let i = 0; i < thumbs.length; i += batchSize) {
-      const batch = thumbs.slice(i, i + batchSize);
-
-      const batchResults = await Promise.all(
-        batch.map(checkOne)
-      );
-
-      results.push(...batchResults);
-    }
+    // 全部平行測，避免一個一個等
+    const results = await Promise.all(
+      candidates.map(checkWayback)
+    );
 
     const recovered = results.filter(x => x.found);
 
     return res.status(200).json({
       ok: true,
-      thumbCount: thumbs.length,
       testedCount: results.length,
       recoveredCount: recovered.length,
       recovered,
