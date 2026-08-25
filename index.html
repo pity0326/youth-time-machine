@@ -1,4 +1,5 @@
 <!doctype html>
+<!-- Youth Time Machine V48 fresh index build -->
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
@@ -376,7 +377,7 @@ input[type=text]:focus{border-color:#4f6840}
 .years{
   display:grid !important;
   grid-template-columns:repeat(6,minmax(0,1fr)) !important;
-  gap:10px !important;
+  gap:8px !important;
   width:100% !important;
   align-items:stretch !important;
 }
@@ -505,8 +506,8 @@ input[type=text]:focus{border-color:#4f6840}
 .action-row > button,
 .action-row > a,
 .action-row .wayback-direct-btn{
-  height:48px !important;
-  min-height:48px !important;
+  height:46px !important;
+  min-height:46px !important;
   padding:0 14px !important;
   margin:0 !important;
   border-radius:6px !important;
@@ -647,7 +648,7 @@ input[type=text]:focus{border-color:#4f6840}
         <div class="action-row">
 <button id="searchBtn" class="search" onclick="searchYear()">▶ 搭上時光機</button>
 <button id="stopBtn" class="stop" onclick="stopSearch()" disabled>✕ 中止搜尋</button>
-<button type="button" id="waybackDirectBtn" class="wayback-direct-btn" onclick="openWaybackDirect()">⚡ 快速查原始紀錄</button>
+<button type="button" id="waybackDirectBtn" class="wayback-direct-btn" onclick="openWaybackDirect()" title="直接開啟 Internet Archive 原始紀錄">⚡ 快速查原始紀錄 ↗</button>
 </div>
       </div>
 
