@@ -1006,147 +1006,72 @@ function showBackgroundSearchStatus(done,total=4){
 }
 
 async function searchYear(){
-  const u=document.getElementById("username").value.trim();
-  const t=document.querySelector('input[name=type]:checked').value;
-  const r=document.getElementById("result");
-  const sb=document.getElementById("searchBtn");
-  const xb=document.getElementById("stopBtn");
+  const u=(document.getElementById("username")?.value||"").trim();
+  const t=document.getElementById("type")?.value||"album";
+  if(!u||!selectedYear)return;
 
-  if(!u){alert("請先輸入無名帳號");return}
-  if(!/^[A-Za-z0-9._-]{1,80}$/.test(u)){alert("帳號格式不正確");return}
+  const statusEl=document.getElementById("status");
+  const setStatus=(txt)=>{ if(statusEl) statusEl.textContent=txt; };
 
-  const k=key(u,t,selectedYear);
-
-  if(activeController)activeController.abort();
-  activeController=new AbortController();
-
-  sb.disabled=true;
-  xb.disabled=false;
-
-  r.innerHTML=`<div class="box">
-    ⏳ 正在搜尋 ${selectedYear} 年的青春紀錄…
-    <div class="small">已搜尋 <strong id="elapsed">0.0</strong> 秒 · 進度 <strong id="yearProgress">0 / 4</strong></div>
-    <div class="small">會先讀共享雲端快取，再同時補查四個季度。</div>
-    <a class="fallback" target="_blank" rel="noopener" href="${calendar(u,t)}">直接前往 Wayback</a>
-  </div>`;
-  timer(true);
-
-  const mergedDays=[];
-  const seen=new Set();
-  let completed=0;
-  let failed=0;
-
-  function mergeDays(days){
-    let added=0;
-    for(const x of days||[]){
-      if(!x?.date||seen.has(x.date))continue;
-      seen.add(x.date);
-      mergedDays.push(x);
-      added++;
-    }
-    return added;
-  }
-
-  function makeData(partial=true,serverCache=false){
-    const days=mergedDays.slice().sort((a,b)=>a.date.localeCompare(b.date));
-    const months={};
-    for(const x of days){
-      if(!months[x.month])months[x.month]=[];
-      months[x.month].push(x);
-    }
-    return {
-      found:days.length>0,
-      year:selectedYear,
-      days,
-      months,
-      partial,
-      serverCache,
-      calendarUrl:calendar(u,t)
-    };
-  }
-
+  // 1. Cloud cache first: show immediately if another device/user already found data.
+  let merged={found:false,year:String(selectedYear),days:[],months:{}};
   try{
-    // 1. 先讀手機/電腦共同的 Redis 年份快取。
     const cloud=await getYearCloudCache(u,t,selectedYear);
-    if(cloud?.found){
-      mergeDays(cloud.days);
-      render(makeData(true,true));
-      showBackgroundSearchStatus(completed,4);
-    }
-
-    // 2. 再讀這台裝置舊的 localStorage；若電腦曾找到、雲端沒有，
-    //    立即上傳到 Redis，讓手機/朋友也能共用。
-    try{
-      const local=JSON.parse(localStorage.getItem(k));
-      if(local?.data?.found===true && Date.now()-local.savedAt<604800000){
-        const added=mergeDays(local.data.days);
-        if(added){
-          render(makeData(true,true));
-      showBackgroundSearchStatus(completed,4);
-          saveYearCloudCache(u,t,selectedYear,makeData(true,false));
-        }
-      }
-    }catch{}
-
-    async function loadPart(part){
-      try{
-        const res=await fetch(`/api/year-part?username=${encodeURIComponent(u)}&type=${t}&year=${selectedYear}&part=${part}`,{
-          signal:activeController.signal,
-          cache:"no-store"
-        });
-        if(!res.ok){failed++;return}
-        const d=await res.json();
-        const added=mergeDays(d.days);
-        if(added){
-          const current=makeData(true,cloud?.found===true);
-          render(current);
-          showBackgroundSearchStatus(completed,4);
-          saveYearCloudCache(u,t,selectedYear,current);
-        }
-      }catch(e){
-        if(e.name==="AbortError")throw e;
-        failed++;
-      }finally{
-        completed++;
-        const p=document.getElementById("yearProgress");
-        if(p)p.textContent=`${completed} / 4`;
-        if(mergedDays.length)showBackgroundSearchStatus(completed,4);
-      }
-    }
-
-    // 3. 四個季度並行補資料。
-    await Promise.all([1,2,3,4].map(loadPart));
-
-    const finalData=makeData(failed>0,false);
-
-    await incrementStats();
-
-    if(finalData.found){
-      try{localStorage.setItem(k,JSON.stringify({savedAt:Date.now(),data:finalData}))}catch{}
-      await saveYearCloudCache(u,t,selectedYear,finalData);
-      warmNearbyYears(u,t,selectedYear);
-    }
-
-    render(finalData);
-    if(finalData.found)showBackgroundSearchStatus(4,4);
-
-  }catch(e){
-    if(e.name==="AbortError"){
-      if(mergedDays.length){
-        const d=makeData(true,false);
-        render(d);
-        saveYearCloudCache(u,t,selectedYear,d);
-      }else{
-        r.innerHTML=`<div class="box"><strong>⛔ 已中止搜尋</strong><div class="small">可以直接再按一次「搭上時光機」。</div><div class="result-actions"><button type="button" class="mini-btn primary" onclick="searchYear()">重新搜尋</button></div></div>`;
-      }
+    if(cloud?.found&&Array.isArray(cloud.days)&&cloud.days.length){
+      merged=cloud;
+      render({...merged,serverCache:true});
+      setStatus(`已載入共享紀錄 ${merged.days.length} 筆，正在背景補找全年資料…`);
     }else{
-      r.innerHTML=`<div class="box"><strong>📡 這次搜尋沒有完整完成</strong><div class="small">Internet Archive 目前可能較忙，可以直接再試一次。</div><div class="result-actions"><button type="button" class="mini-btn primary" onclick="searchYear()">再試一次</button><a class="mini-btn" target="_blank" rel="noopener" href="${calendar(u,t)}">直接前往 Wayback</a></div></div>`;
+      setStatus("正在搜尋第 1/4 季…");
     }
-  }finally{
-    timer(false);
-    activeController=null;
-    sb.disabled=false;
-    xb.disabled=true;
+  }catch{
+    setStatus("正在搜尋第 1/4 季…");
+  }
+
+  const map=new Map();
+  for(const x of merged.days||[]) if(x?.date) map.set(x.date,x);
+
+  // 2. Search quarters sequentially. Never launch all 4 at once.
+  for(let part=1;part<=4;part++){
+    setStatus(`正在補找 ${part}/4 季…目前找到 ${map.size} 筆`);
+    try{
+      const r=await fetch(`/api/year-part?username=${encodeURIComponent(u)}&type=${encodeURIComponent(t)}&year=${encodeURIComponent(selectedYear)}&part=${part}`,{cache:"no-store"});
+      if(r.ok){
+        const d=await r.json();
+        if(d?.found&&Array.isArray(d.days)){
+          let changed=false;
+          for(const x of d.days){
+            if(x?.date&&!map.has(x.date)) changed=true;
+            if(x?.date) map.set(x.date,x);
+          }
+          if(changed){
+            const days=[...map.values()].sort((a,b)=>String(a.date).localeCompare(String(b.date)));
+            const months={};
+            for(const x of days)(months[x.month]??=[]).push(x);
+            merged={found:days.length>0,year:String(selectedYear),days,months};
+            render(merged);
+            // year-part also writes Redis; this POST is a harmless second merge.
+            try{ await saveYearCloudCache(u,t,selectedYear,merged); }catch{}
+          }
+        }
+      }
+    }catch(e){
+      // Keep already-found data and continue to the next quarter.
+    }
+  }
+
+  const days=[...map.values()].sort((a,b)=>String(a.date).localeCompare(String(b.date)));
+  const months={};
+  for(const x of days)(months[x.month]??=[]).push(x);
+  merged={found:days.length>0,year:String(selectedYear),days,months};
+
+  if(merged.found){
+    render(merged);
+    try{ await saveYearCloudCache(u,t,selectedYear,merged); }catch{}
+    setStatus(`全年搜尋完成，共找到 ${days.length} 筆保存紀錄`);
+  }else{
+    render(merged);
+    setStatus("全年搜尋完成，目前沒有找到可用的保存紀錄");
   }
 }
 document.getElementById("username").addEventListener("keydown",e=>{if(e.key==="Enter")searchYear()});
