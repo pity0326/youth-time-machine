@@ -275,7 +275,41 @@ input[type=text]:focus{border-color:#4f6840}
   .years{grid-template-columns:repeat(5,1fr);gap:7px}
   .older{grid-template-columns:repeat(3,1fr)}
   .actions{grid-template-columns:1fr}
-  .main-stats-mobile{display:block;background:#1b1a16;color:#dcc797;border:1px dashed #8d7240;padding:12px;text-align:center;margin:0 0 18px}
+  .main-stats-mobile{
+    display:grid;
+    grid-template-columns:1fr 1px 1fr;
+    align-items:center;
+    background:#1b1a16;
+    color:#dcc797;
+    border:1px dashed #8d7240;
+    padding:14px 10px;
+    text-align:center;
+    margin:0 0 18px;
+    border-radius:2px;
+  }
+  .mobile-stat-item{min-width:0;padding:0 6px}
+  .mobile-stat-label{font-size:14px;white-space:nowrap;letter-spacing:.5px}
+  .mobile-stat-number{
+    display:block;
+    margin-top:4px;
+    color:#efd69a;
+    font-family:Georgia,serif;
+    font-size:25px;
+    line-height:1.15;
+    white-space:nowrap;
+  }
+  .mobile-stat-divider{width:1px;height:42px;background:#8d7240;opacity:.75}
+  .paper-title{
+    font-size:20px;
+    line-height:1.45;
+    white-space:nowrap;
+    letter-spacing:-.5px;
+  }
+}
+@media(max-width:390px){
+  .paper-title{font-size:18px}
+  .mobile-stat-label{font-size:13px}
+  .mobile-stat-number{font-size:23px}
 }
 </style>
 </head>
@@ -327,7 +361,15 @@ input[type=text]:focus{border-color:#4f6840}
       <div class="paper-sub">找回那些年，留在網路上的青春。</div>
 
       <div class="main-stats-mobile">
-        ♥ 累積訪客 <span id="mobileTotal">—</span>　｜　今日訪客 <span id="mobileToday">—</span>
+        <div class="mobile-stat-item">
+          <div class="mobile-stat-label">♥ 累積訪客</div>
+          <div class="mobile-stat-number" id="mobileTotal">—</div>
+        </div>
+        <div class="mobile-stat-divider"></div>
+        <div class="mobile-stat-item">
+          <div class="mobile-stat-label">今日訪客</div>
+          <div class="mobile-stat-number" id="mobileToday">—</div>
+        </div>
       </div>
 
       <input id="username" type="text" placeholder="輸入你的無名帳號" autocomplete="off">
