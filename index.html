@@ -13,11 +13,36 @@ input[type=text]{width:100%;padding:16px;border:2px solid #ddd;border-radius:13p
 .older-toggle{margin-top:12px;border:0;background:transparent;text-decoration:underline;color:#666;cursor:pointer;font-size:14px}.older{display:none;margin-top:12px;grid-template-columns:repeat(6,1fr);gap:7px}.older.show{display:grid}
 .actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:22px}.search,.stop{padding:16px;border:0;border-radius:12px;font-size:17px;font-weight:bold;cursor:pointer}.search{background:#222;color:#fff}.stop{background:#f0f0f0}.stop:disabled,.search:disabled{opacity:.5;cursor:not-allowed}
 #result{margin-top:24px}.box{text-align:left;background:#fafafa;border:1px solid #eee;border-radius:16px;padding:19px;line-height:1.7}.month{font-weight:bold;font-size:18px;margin:18px 0 7px}.day{display:inline-block;margin:4px;padding:8px 10px;border:1px solid #ddd;border-radius:9px;background:#fff;color:#222;text-decoration:none}.small{color:#777;font-size:13px;margin-top:9px}.fallback{display:inline-block;margin-top:12px;padding:10px 13px;background:#222;color:#fff;border-radius:9px;text-decoration:none}.badge{font-size:12px;background:#eee;border-radius:999px;padding:2px 7px;margin-left:6px;color:#555}.foot{margin-top:24px;color:#aaa;font-size:12px;line-height:1.7}
+
+.stats-wrap{
+  display:none;
+  margin:-8px auto 24px;
+  padding:14px 16px;
+  border:1px solid #ececec;
+  border-radius:16px;
+  background:#fafafa;
+  color:#555;
+  line-height:1.7;
+}
+.stats-main{
+  font-size:15px;
+  font-weight:bold;
+  color:#222;
+}
+.stats-sub{
+  margin-top:2px;
+  font-size:13px;
+  color:#777;
+}
 @media(max-width:520px){.years{grid-template-columns:repeat(5,1fr)}.older{grid-template-columns:repeat(3,1fr)}.actions{grid-template-columns:1fr}.card{padding:30px 17px}h1{font-size:29px}}
 </style></head>
 <body><main class="card">
 <h1>🕰️ 青春時光機</h1>
 <div class="sub">找回那些年，留在網路上的青春。<br>還記得你的無名小站帳號嗎？</div>
+<div id="statsWrap" class="stats-wrap">
+  <div class="stats-main">🕰️ 已有 <span id="totalCount">0</span> 人次搭上時光機</div>
+  <div class="stats-sub">🔎 今日搜尋 <span id="todayCount">0</span> 次</div>
+</div>
 <input id="username" type="text" placeholder="輸入你的無名帳號" autocomplete="off">
 
 <div class="label">你想回去哪裡？</div>
@@ -58,13 +83,39 @@ function render(d,cache=false){const r=document.getElementById("result");if(!d.f
 let h=`<div class="box"><strong>🎉 找到 ${selectedYear} 年的青春了！</strong>${cache?'<span class="badge">快取</span>':''}<div class="small">共找到 ${d.days.length} 個有保存紀錄的日期</div>`;
 for(const m of Object.keys(d.months).sort()){h+=`<div class="month">${Number(m)} 月</div>`;for(const x of d.months[m])h+=`<a class="day" target="_blank" rel="noopener" href="${x.url}">${Number(x.day)} 日</a>`}
 h+=`<div class="small">點日期即可回到當天保存的無名頁面。</div></div>`;r.innerHTML=h}
+
+async function loadStats(){
+  try{
+    const res=await fetch("/api/counter",{cache:"no-store"});
+    const data=await res.json();
+    if(res.ok && typeof data.total==="number" && typeof data.today==="number"){
+      document.getElementById("totalCount").textContent=data.total.toLocaleString("zh-TW");
+      document.getElementById("todayCount").textContent=data.today.toLocaleString("zh-TW");
+      document.getElementById("statsWrap").style.display="block";
+    }
+  }catch{}
+}
+
+async function incrementStats(){
+  try{
+    const res=await fetch("/api/counter",{method:"POST",cache:"no-store"});
+    const data=await res.json();
+    if(res.ok && typeof data.total==="number" && typeof data.today==="number"){
+      document.getElementById("totalCount").textContent=data.total.toLocaleString("zh-TW");
+      document.getElementById("todayCount").textContent=data.today.toLocaleString("zh-TW");
+      document.getElementById("statsWrap").style.display="block";
+    }
+  }catch{}
+}
+
 async function searchYear(){
 const u=document.getElementById("username").value.trim(),t=document.querySelector('input[name=type]:checked').value,r=document.getElementById("result"),sb=document.getElementById("searchBtn"),xb=document.getElementById("stopBtn");
 if(!u){alert("請先輸入無名帳號");return}if(!/^[A-Za-z0-9._-]{1,80}$/.test(u)){alert("帳號格式不正確");return}
-const k=key(u,t,selectedYear);try{const c=JSON.parse(localStorage.getItem(k));if(c&&Date.now()-c.savedAt<604800000){render(c.data,true);return}}catch{}
+const k=key(u,t,selectedYear);try{const c=JSON.parse(localStorage.getItem(k));if(c&&Date.now()-c.savedAt<604800000){await incrementStats();render(c.data,true);return}}catch{}
 activeController=new AbortController();sb.disabled=true;xb.disabled=false;r.innerHTML=`<div class="box">⏳ 正在尋找 ${selectedYear} 年的青春紀錄…<div class="small">已搜尋 <strong id="elapsed">0.0</strong> 秒，可隨時中止。</div><a class="fallback" target="_blank" rel="noopener" href="${calendar(u,t)}">直接前往 Wayback</a></div>`;timer(true);
-try{const res=await fetch(`/api/year-fast?username=${encodeURIComponent(u)}&type=${t}&year=${selectedYear}`,{signal:activeController.signal});const d=await res.json();if(!res.ok)throw new Error(d.error||"查詢失敗");try{localStorage.setItem(k,JSON.stringify({savedAt:Date.now(),data:d}))}catch{}render(d)}
+try{const res=await fetch(`/api/year-fast?username=${encodeURIComponent(u)}&type=${t}&year=${selectedYear}`,{signal:activeController.signal});const d=await res.json();if(!res.ok)throw new Error(d.error||"查詢失敗");await incrementStats();try{localStorage.setItem(k,JSON.stringify({savedAt:Date.now(),data:d}))}catch{}render(d)}
 catch(e){r.innerHTML=e.name==="AbortError"?`<div class="box">⛔ 已中止搜尋。<div class="small">可以換年份、稍後再試，或直接進 Wayback。</div><a class="fallback" target="_blank" rel="noopener" href="${calendar(u,t)}">直接前往 Wayback</a></div>`:`<div class="box">⚠️ Internet Archive 回應較慢或查詢失敗。<div class="small">${e.message}</div><a class="fallback" target="_blank" rel="noopener" href="${calendar(u,t)}">直接前往 Wayback</a></div>`}
 finally{timer(false);activeController=null;sb.disabled=false;xb.disabled=true}}
 document.getElementById("username").addEventListener("keydown",e=>{if(e.key==="Enter")searchYear()});
+loadStats();
 </script></body></html>
