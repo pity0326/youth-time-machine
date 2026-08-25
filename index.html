@@ -550,7 +550,17 @@ function toggleOlder(){older.classList.toggle("show")}
 function stopSearch(){if(activeController)activeController.abort()}
 function timer(on){clearInterval(timerId);if(!on)return;startedAt=Date.now();timerId=setInterval(()=>{const e=document.getElementById("elapsed");if(e)e.textContent=((Date.now()-startedAt)/1000).toFixed(1)},100)}
 function key(u,t,y){return`ytm:v5:${u.toLowerCase()}:${t}:${y}`}
-function calendar(u,t){return`https://web.archive.org/web/*/http://www.wretch.cc/${t}/${encodeURIComponent(u)}`}
+function cleanArchiveAccount(value){
+  return String(value||"")
+    .trim()
+    .split("?")[0]
+    .split("#")[0]
+    .replace(/\/+$/,"");
+}
+function calendar(u,t){
+  const account=encodeURIComponent(cleanArchiveAccount(u));
+  return `https://web.archive.org/web/${selectedYear}0000000000*/wretch.cc/${t}/${account}`;
+}
 function toggleAccountHelp(){document.getElementById("accountHelp").classList.toggle("show")}
 function buildShareCard(data,u,t,y){
  const labels={album:"相簿",blog:"網誌",guestbook:"留言板"};
