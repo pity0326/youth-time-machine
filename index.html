@@ -1066,7 +1066,7 @@ function showBackgroundSearchStatus(done,total=4){
 
 let deepSearchController=null;
 
-async function searchYear(){
+async function searchYear(forceRefresh=false){
   const u=(document.getElementById("username")?.value||"").trim();
   const checkedType=document.querySelector('input[name="type"]:checked');
   const selectType=document.getElementById("type");
@@ -1113,10 +1113,10 @@ async function searchYear(){
       </div>`;
   }
   function removeLive(){document.getElementById("liveSearchPanel")?.remove()}
-  function currentData(){
+  function currentData(serverCache=false){
     const days=[...map.values()].sort((a,b)=>String(a.date).localeCompare(String(b.date)));
     const months={}; for(const x of days)(months[x.month]??=[]).push(x);
-    return {found:days.length>0,year:String(selectedYear),days,months};
+    return {found:days.length>0,year:String(selectedYear),days,months,serverCache};
   }
   function mergeDays(days){
     let changed=false;
@@ -1133,19 +1133,30 @@ async function searchYear(){
   }
 
   try{
-    updateLivePanel(`正在快速搜尋 ${selectedYear} 年…`);
+    updateLivePanel(`正在確認 ${selectedYear} 年雲端快取…`);
     liveTimer=setInterval(()=>updateLivePanel(),500);
 
-    // Cloud cache first
-    try{
-      const cloud=await getYearCloudCache(u,t,selectedYear);
-      if(cloud?.found&&Array.isArray(cloud.days)){
-        mergeDays(cloud.days);
-        renderKeep(`已載入共享紀錄 ${map.size} 筆，正在快速補找…`);
-      }
-    }catch{}
+    // V45 核心：有共享雲端快取就直接結束，不再自動重搜。
+    if(!forceRefresh){
+      try{
+        const cloud=await getYearCloudCache(u,t,selectedYear);
+        if(cloud?.found&&Array.isArray(cloud.days)&&cloud.days.length){
+          mergeDays(cloud.days);
+          render(currentData(true));
+          if(statusEl){
+            statusEl.innerHTML=
+              `☁️ 已從雲端快取載入 ${cloud.days.length} 筆紀錄。`+
+              ` <button type="button" class="mini-btn" onclick="searchYear(true)">🔄 重新補找</button>`+
+              ` <button type="button" class="mini-btn" onclick="startDeepSearch()">🔎 背景完整補找</button>`;
+          }
+          return;
+        }
+      }catch{}
+    }
 
-    // Fast pass: 4 probes/month, quarter by quarter.
+    // 沒快取，或使用者主動按「重新補找」才真正掃 Wayback。
+    updateLivePanel(forceRefresh?`正在重新補找 ${selectedYear} 年…`:`沒有雲端快取，開始搜尋 ${selectedYear} 年…`);
+
     for(let part=1;part<=4;part++){
       currentPart=part;
       updateLivePanel(`快速搜尋 ${selectedYear} 年第 ${part}/4 季…`);
@@ -1169,15 +1180,18 @@ async function searchYear(){
 
     const data=currentData();
     render(data);
+
     if(data.found){
       try{await saveYearCloudCache(u,t,selectedYear,data)}catch{}
       if(statusEl)statusEl.innerHTML=
         `⚡ ${selectedYear} 快速搜尋完成，目前找到 ${data.days.length} 筆。`+
+        ` <button type="button" class="mini-btn" onclick="searchYear(true)">🔄 重新補找</button>`+
         ` <button type="button" class="mini-btn" onclick="startDeepSearch()">🔎 背景完整補找</button>`;
     }else{
       if(statusEl)statusEl.innerHTML=
         `⚡ ${selectedYear} 快速搜尋完成，目前沒有找到紀錄。`+
-        ` <button type="button" class="mini-btn" onclick="startDeepSearch()">🔎 再做完整補找</button>`;
+        ` <button type="button" class="mini-btn" onclick="searchYear(true)">🔄 再找一次</button>`+
+        ` <button type="button" class="mini-btn" onclick="startDeepSearch()">🔎 完整補找</button>`;
     }
 
   }catch(e){
