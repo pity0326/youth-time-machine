@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Youth Time Machine V57 equal-buttons no-account-check -->
+<!-- Youth Time Machine V59 wide-equal-actions + quick-original-tip -->
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
@@ -477,33 +477,65 @@ input[type=text]:focus{border-color:#4f6840}
 
 
 
-/* V51：主操作區唯一樣式，避免舊版 CSS 互相覆蓋 */
+
+/* V58：桌機主操作區放寬、三鍵完全等比例 */
+.actions{
+  display:block !important;
+  width:100% !important;
+  margin-top:24px !important;
+}
+
 .action-row{
   display:grid !important;
   grid-template-columns:repeat(3,minmax(0,1fr)) !important;
-  gap:8px !important;
+  gap:12px !important;
   width:100% !important;
-  align-items:stretch !important;
+  max-width:none !important;
 }
 
 .action-row #searchBtn,
 .action-row #stopBtn,
 .action-row #waybackDirectBtn{
   width:100% !important;
-  height:46px !important;
-  min-height:46px !important;
+  height:52px !important;
+  min-height:52px !important;
   margin:0 !important;
-  padding:0 10px !important;
+  padding:0 12px !important;
   box-sizing:border-box !important;
-  border-radius:6px !important;
   display:flex !important;
   align-items:center !important;
   justify-content:center !important;
-  line-height:1.15 !important;
-  font-size:14px !important;
+  border-radius:6px !important;
+  font-size:15px !important;
   font-weight:700 !important;
+  line-height:1 !important;
   white-space:nowrap !important;
   box-shadow:none !important;
+}
+
+/* 清掉快速查按鈕舊版額外 margin */
+.action-row #waybackDirectBtn{
+  margin:0 !important;
+}
+
+/* 本站說明與權利聲明：同寬、同內距、左邊完全對齊 */
+#sitePurposeNote,
+#rightsNotice{
+  width:100% !important;
+  box-sizing:border-box !important;
+  margin-left:0 !important;
+  margin-right:0 !important;
+  padding:18px 20px !important;
+  text-align:left !important;
+}
+
+#sitePurposeNote{
+  margin-top:22px !important;
+  margin-bottom:12px !important;
+}
+
+#rightsNotice{
+  margin-top:0 !important;
 }
 
 @media(max-width:700px){
@@ -516,40 +548,7 @@ input[type=text]:focus{border-color:#4f6840}
   .action-row #waybackDirectBtn{
     height:46px !important;
     min-height:46px !important;
-  }
-}
-
-
-
-/* V57：三個主按鈕完全等比例 */
-.action-row{
-  display:grid !important;
-  grid-template-columns:repeat(3,minmax(0,1fr)) !important;
-  gap:8px !important;
-  width:100% !important;
-  align-items:stretch !important;
-}
-.action-row #searchBtn,
-.action-row #stopBtn,
-.action-row #waybackDirectBtn{
-  width:100% !important;
-  height:46px !important;
-  min-height:46px !important;
-  margin:0 !important;
-  padding:0 10px !important;
-  box-sizing:border-box !important;
-  display:flex !important;
-  align-items:center !important;
-  justify-content:center !important;
-  border-radius:6px !important;
-  font-size:14px !important;
-  font-weight:700 !important;
-  line-height:1.1 !important;
-  white-space:nowrap !important;
-}
-@media(max-width:700px){
-  .action-row{
-    grid-template-columns:1fr !important;
+    font-size:14px !important;
   }
 }
 
@@ -617,12 +616,9 @@ input[type=text]:focus{border-color:#4f6840}
 
       <div class="note" style="margin:0 0 18px;padding:13px 16px;text-align:left">
         <strong>⚠️ 時光機服務提醒</strong><br>
-        <span class="small" style="line-height:1.8">
-          Internet Archive 近期查詢偶爾較慢或暫時無法完整回傳資料。
-          若第一次搜尋不到，<strong>不代表你的無名紀錄不存在</strong>，可以稍後再試一次。
-          已成功搜尋到的紀錄會逐步加入雲端快取，之後查詢會更穩定。
-        </span>
-      </div>
+  Internet Archive 近期查詢偶爾較慢，若第一次搜尋不到，<strong>不代表你的無名紀錄不存在</strong>，可以稍後再試。<br><br>
+  如果不想等待完整搜尋，也可以點選 <strong>「⚡ 快速查原始紀錄」</strong>，直接前往 Internet Archive 查找，通常會比「搭上時光機」更快看到結果。<br><br>
+  已成功搜尋到的紀錄也會逐步加入雲端快取，讓之後的查詢更快速、更穩定。</div>
 
       <input id="username" type="text" placeholder="輸入你的無名帳號" autocomplete="off">
 
@@ -661,16 +657,18 @@ input[type=text]:focus{border-color:#4f6840}
 
 
       
-<div class="note" id="rightsNotice" style="margin-top:22px;text-align:left;padding:18px 20px">
-        
-<div class="note" id="sitePurposeNote" style="margin-top:16px;text-align:left;padding:15px 18px">
+
+<div class="note" id="sitePurposeNote">
+
   <strong>📌 本站說明</strong><br>
   <span class="small" style="line-height:1.8">
     「青春時光機」並非發明 Wayback Machine，而是利用 Internet Archive 公開保存的歷史網頁紀錄，
     重新整理成更適合搜尋無名小站的操作介面。希望讓更多人能更簡單地找回，那些年留在網路上的青春記憶。
   </span>
+
 </div>
 
+<div class="note" id="rightsNotice">
 <div style="font-weight:700;margin-bottom:8px">⚖️ 歷史內容與權利聲明</div>
         <div class="small" style="line-height:1.9">
           本站為懷舊資料搜尋工具，協助使用者尋找 Internet Archive 公開保存的歷史網頁紀錄。
@@ -681,7 +679,8 @@ input[type=text]:focus{border-color:#4f6840}
         <div class="result-actions" style="margin-top:12px">
           <a class="mini-btn" target="_blank" rel="noopener" href="https://www.threads.com/@pity.0326">💬 聯絡作者申請移除</a>
         </div>
-      </div>
+</div>
+
 
       <div class="foot">
         本站不會要求或保存你的無名密碼。<br>
