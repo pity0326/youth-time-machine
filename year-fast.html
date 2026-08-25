@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>青春時光機｜整年快速搜尋</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;font-family:Arial,"Microsoft JhengHei",sans-serif;background:linear-gradient(135deg,#fff8f0,#eef6ff);display:flex;align-items:center;justify-content:center;padding:20px}
+.card{width:100%;max-width:680px;background:#fff;border-radius:24px;padding:34px 24px;box-shadow:0 10px 35px rgba(0,0,0,.08);text-align:center}
+h1{margin:0 0 8px}.sub{color:#666;line-height:1.7;margin-bottom:22px}
+input[type="text"],select{width:100%;padding:15px;border:2px solid #ddd;border-radius:12px;font-size:16px;margin-top:10px;background:#fff}
+.label{font-weight:bold;margin-top:20px}
+.choices{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.choice input{display:none}
+.choice span{display:block;padding:13px 4px;border:2px solid #e5e5e5;border-radius:12px;cursor:pointer;line-height:1.7}
+.choice input:checked+span{background:#222;color:#fff;border-color:#222}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:20px}
+button{padding:15px;border:0;border-radius:12px;font-size:17px;font-weight:bold;cursor:pointer}
+.search{background:#222;color:#fff}.stop{background:#f1f1f1;color:#222}
+button:disabled{opacity:.5;cursor:not-allowed}
+#result{margin-top:22px}.box{background:#fafafa;border:1px solid #eee;border-radius:15px;padding:18px;text-align:left;line-height:1.7}
+.month-title{margin:18px 0 8px;font-weight:bold;font-size:18px}
+.day{display:inline-block;margin:4px;padding:8px 10px;border:1px solid #ddd;border-radius:9px;background:#fff;color:#222;text-decoration:none}
+.small{color:#777;font-size:13px;line-height:1.7;margin-top:8px}
+.timer{font-variant-numeric:tabular-nums;font-weight:bold}
+.cache{display:inline-block;margin-left:6px;padding:2px 7px;border-radius:999px;background:#eee;font-size:12px;color:#555}
+@media(max-width:480px){.actions{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="card">
+<h1>🕰️ 青春時光機</h1>
+<div class="sub">整年快速搜尋測試版｜一次查整年，自動按月份整理日期</div>
+
+<input id="username" type="text" placeholder="輸入無名帳號">
+
+<div class="label">你想回去哪裡？</div>
+<div class="choices">
+<label class="choice"><input type="radio" name="type" value="album" checked><span>📷<br>相簿</span></label>
+<label class="choice"><input type="radio" name="type" value="blog"><span>📝<br>網誌</span></label>
+<label class="choice"><input type="radio" name="type" value="guestbook"><span>💬<br>留言板</span></label>
+</div>
+
+<div class="label">選擇年份</div>
+<select id="year"></select>
+
+<div class="actions">
+<button class="search" id="searchBtn" onclick="searchYear()">🔎 搜尋這一年的紀錄</button>
+<button class="stop" id="stopBtn" onclick="stopSearch()" disabled>✕ 中止搜尋</button>
+</div>
+
+<div id="result"></div>
+</div>
+
+<script>
+const yearSelect=document.getElementById("year");
+for(let y=2013;y>=2003;y--){const o=document.createElement("option");o.value=y;o.textContent=y+" 年";yearSelect.appendChild(o)}
+
+let activeController=null;
+let timerId=null;
+let startedAt=0;
+
+function setTimer(on){
+  clearInterval(timerId);
+  if(!on) return;
+  startedAt=Date.now();
+  timerId=setInterval(()=>{
+    const el=document.getElementById("elapsed");
+    if(el) el.textContent=((Date.now()-startedAt)/1000).toFixed(1);
+  },100);
+}
+
+function stopSearch(){
+  if(activeController){
+    activeController.abort();
+    activeController=null;
+  }
+}
+
+function cacheKey(username,type,year){
+  return `ytm:${username}:${type}:${year}`;
+}
+
+function renderResult(data, year, fromCache=false){
+  const result=document.getElementById("result");
+
+  if(!data.found){
+    result.innerHTML=`<div class="box">🥲 ${year} 年暫時沒有取得紀錄。<div class="small">這不一定代表當年完全沒有資料。</div></div>`;
+    return;
+  }
+
+  let out=`<div class="box"><strong>🎉 ${year} 年找到 ${data.days.length} 個有保存紀錄的日期</strong>${fromCache?'<span class="cache">快取</span>':''}`;
+
+  const monthNames={"01":"1 月","02":"2 月","03":"3 月","04":"4 月","05":"5 月","06":"6 月","07":"7 月","08":"8 月","09":"9 月","10":"10 月","11":"11 月","12":"12 月"};
+
+  for(const month of Object.keys(data.months).sort()){
+    const items=data.months[month];
+    if(!items || !items.length) continue;
+    out+=`<div class="month-title">${monthNames[month]}</div>`;
+    for(const x of items){
+      out+=`<a class="day" target="_blank" rel="noopener" href="${x.url}">${Number(x.day)} 日</a>`;
+    }
+  }
+
+  out+=`<div class="small">每一天只保留一個代表快照；再次查相同帳號與年份會優先讀取本機快取。</div></div>`;
+  result.innerHTML=out;
+}
+
+async function searchYear(){
+  const username=document.getElementById("username").value.trim();
+  const year=yearSelect.value;
+  const type=document.querySelector('input[name="type"]:checked').value;
+  const result=document.getElementById("result");
+  const searchBtn=document.getElementById("searchBtn");
+  const stopBtn=document.getElementById("stopBtn");
+
+  if(!username){alert("請先輸入無名帳號");return}
+  if(!/^[A-Za-z0-9._-]{1,80}$/.test(username)){alert("帳號格式不正確");return}
+
+  const key=cacheKey(username,type,year);
+
+  try{
+    const cached=localStorage.getItem(key);
+    if(cached){
+      const parsed=JSON.parse(cached);
+      if(Date.now()-parsed.savedAt < 1000*60*60*24*7){
+        renderResult(parsed.data,year,true);
+        return;
+      }
+    }
+  }catch{}
+
+  activeController=new AbortController();
+  searchBtn.disabled=true;
+  stopBtn.disabled=false;
+
+  result.innerHTML=`<div class="box">⏳ 正在搜尋 ${year} 年的紀錄…<div class="small">已搜尋 <span id="elapsed" class="timer">0.0</span> 秒，可隨時按「中止搜尋」。</div></div>`;
+  setTimer(true);
+
+  try{
+    const r=await fetch(`/api/year-fast?username=${encodeURIComponent(username)}&type=${type}&year=${year}`,{signal:activeController.signal});
+    const d=await r.json();
+    if(!r.ok) throw new Error(d.error||"查詢失敗");
+
+    try{
+      localStorage.setItem(key,JSON.stringify({savedAt:Date.now(),data:d}));
+    }catch{}
+
+    renderResult(d,year,false);
+  }catch(e){
+    if(e.name==="AbortError"){
+      result.innerHTML=`<div class="box">⛔ 已中止搜尋。<div class="small">你可以稍後再試，或換其他年份。</div></div>`;
+    }else{
+      result.innerHTML=`<div class="box">⚠️ 查詢失敗。<div class="small">${e.message}</div></div>`;
+    }
+  }finally{
+    setTimer(false);
+    activeController=null;
+    searchBtn.disabled=false;
+    stopBtn.disabled=true;
+  }
+}
+</script>
+</body>
+</html>
