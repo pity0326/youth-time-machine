@@ -1053,25 +1053,17 @@ async function searchYear(){
   const statusEl=document.getElementById("status");
   const resultEl=document.getElementById("result");
 
-  if(!u){
-    alert("請先輸入無名帳號");
-    return;
-  }
+  if(!u){ alert("請先輸入無名帳號"); return; }
 
-  if(activeController){
-    try{activeController.abort()}catch{}
-  }
+  if(activeController){ try{activeController.abort()}catch{} }
   activeController=new AbortController();
-
-  if(sb) sb.disabled=true;
-  if(xb) xb.disabled=false;
+  if(sb)sb.disabled=true;
+  if(xb)xb.disabled=false;
 
   let merged={found:false,year:String(selectedYear),days:[],months:{}};
   const map=new Map();
   const startedAt=Date.now();
-  let currentPart=0;
-  let completedParts=0;
-  let liveTimer=null;
+  let currentPart=0,completedParts=0,liveTimer=null;
 
   function ensureLivePanel(){
     let panel=document.getElementById("liveSearchPanel");
@@ -1079,18 +1071,13 @@ async function searchYear(){
       panel=document.createElement("div");
       panel.id="liveSearchPanel";
       panel.className="live-search-panel";
-      if(resultEl){
-        resultEl.prepend(panel);
-      }else if(statusEl?.parentElement){
-        statusEl.parentElement.insertBefore(panel,statusEl.nextSibling);
-      }
+      if(resultEl)resultEl.prepend(panel);
+      else if(statusEl?.parentElement)statusEl.parentElement.insertBefore(panel,statusEl.nextSibling);
     }
     return panel;
   }
-
   function updateLivePanel(message=""){
-    const panel=ensureLivePanel();
-    if(!panel)return;
+    const panel=ensureLivePanel(); if(!panel)return;
     const sec=((Date.now()-startedAt)/1000).toFixed(1);
     panel.innerHTML=`
       <div class="live-search-title"><span class="live-search-dot"></span>${message||`正在穿越 ${selectedYear} 年…`}</div>
@@ -1098,44 +1085,81 @@ async function searchYear(){
         <span>⏱ 已搜尋 <strong>${sec}</strong> 秒</span>
         <span>📅 目前找到 <strong>${map.size}</strong> 筆</span>
         <span>🧭 進度 <strong>${completedParts}/4</strong></span>
-        <span>🔎 正在處理 <strong>${currentPart ? `${currentPart}/4 季` : "雲端快取"}</strong></span>
+        <span>🔎 正在處理 <strong>${currentPart ? `${currentPart}/4 季` : "帳號預檢"}</strong></span>
       </div>`;
   }
-
-  function removeLivePanel(){
-    const panel=document.getElementById("liveSearchPanel");
-    if(panel)panel.remove();
-  }
-
-  function renderAndRestore(data,message){
-    render(data);
-    updateLivePanel(message);
-  }
+  function removeLivePanel(){ document.getElementById("liveSearchPanel")?.remove(); }
+  function renderAndRestore(data,msg){ render(data); updateLivePanel(msg); }
 
   try{
-    updateLivePanel(`正在準備 ${selectedYear} 年搜尋…`);
+    updateLivePanel(`正在快速確認 ${u} 是否有無名歷史紀錄…`);
     liveTimer=setInterval(()=>updateLivePanel(),500);
 
-    // 1. 共享快取先顯示
+    // V42: quick account precheck. It only accelerates obvious cases.
+    // A miss is NOT treated as proof that an old Wretch account never existed.
+    let quickEvidence=false;
+    try{
+      const pr=await fetch(
+        `/api/year-part?username=${encodeURIComponent(u)}&type=${encodeURIComponent(t)}&year=${encodeURIComponent(selectedYear)}&precheck=1`,
+        {signal:activeController.signal,cache:"no-store"}
+      );
+      if(pr.ok){
+        const pd=await pr.json();
+        quickEvidence=!!pd?.quickEvidence;
+      }
+    }catch(e){
+      if(e?.name==="AbortError")throw e;
+    }
+
+    if(quickEvidence){
+      updateLivePanel(`已確認有歷史保存紀錄，正在載入 ${selectedYear}…`);
+    }else{
+      updateLivePanel(`快速預檢未命中，仍會保守搜尋 ${selectedYear}，避免漏掉舊紀錄…`);
+    }
+
+    // Shared cloud cache first.
     try{
       const cloud=await getYearCloudCache(u,t,selectedYear);
       if(cloud?.found&&Array.isArray(cloud.days)&&cloud.days.length){
-        for(const x of cloud.days){
-          if(x?.date) map.set(x.date,x);
-        }
+        for(const x of cloud.days)if(x?.date)map.set(x.date,x);
         merged=cloud;
-        renderAndRestore({...merged,serverCache:true},`已載入共享紀錄，正在補找 ${selectedYear} 全年資料…`);
-      }else{
-        updateLivePanel(`沒有共享快取，開始搜尋 ${selectedYear} 年…`);
+        renderAndRestore({...merged,serverCache:true},`已載入共享紀錄 ${map.size} 筆，正在背景補找…`);
       }
-    }catch{
-      updateLivePanel(`共享快取暫時無法讀取，直接搜尋 ${selectedYear} 年…`);
+    }catch{}
+
+    // If no quick evidence AND no cache, do one short first-quarter probe.
+    // If that also returns nothing, show an early typo warning, but still keep
+    // a one-click way to continue rather than falsely declaring the account invalid.
+    if(!quickEvidence && map.size===0){
+      currentPart=1;
+      updateLivePanel(`帳號可能輸入錯誤，先做一次快速年份確認…`);
+      try{
+        const rr=await fetch(
+          `/api/year-part?username=${encodeURIComponent(u)}&type=${encodeURIComponent(t)}&year=${encodeURIComponent(selectedYear)}&part=1`,
+          {signal:activeController.signal,cache:"no-store"}
+        );
+        if(rr.ok){
+          const dd=await rr.json();
+          if(dd?.found&&Array.isArray(dd.days)){
+            for(const x of dd.days)if(x?.date)map.set(x.date,x);
+          }
+        }
+      }catch(e){ if(e?.name==="AbortError")throw e; }
+
+      completedParts=1;
+
+      if(map.size===0){
+        if(statusEl)statusEl.innerHTML=
+          `🔍 快速搜尋不到「${u}」的保存紀錄。請先確認帳號是否輸入正確；舊無名資料有時也可能暫時查不到。`;
+        render({found:false,year:String(selectedYear),days:[],months:{}});
+        return;
+      }
     }
 
-    // 2. 依序搜尋四季
-    for(let part=1;part<=4;part++){
+    // Deep search. If part 1 was already used above, start at part 2.
+    const firstPart=completedParts===1?2:1;
+    for(let part=firstPart;part<=4;part++){
       if(activeController.signal.aborted)throw new DOMException("Aborted","AbortError");
-
       currentPart=part;
       updateLivePanel(`正在補找 ${selectedYear} 年第 ${part}/4 季…`);
 
@@ -1144,81 +1168,45 @@ async function searchYear(){
           `/api/year-part?username=${encodeURIComponent(u)}&type=${encodeURIComponent(t)}&year=${encodeURIComponent(selectedYear)}&part=${part}`,
           {signal:activeController.signal,cache:"no-store"}
         );
-
         if(r.ok){
           const d=await r.json();
-
           if(d?.found&&Array.isArray(d.days)){
             let changed=false;
-
             for(const x of d.days){
               if(!x?.date)continue;
               if(!map.has(x.date))changed=true;
               map.set(x.date,x);
             }
-
             if(changed){
               const days=[...map.values()].sort((a,b)=>String(a.date).localeCompare(String(b.date)));
-              const months={};
-              for(const x of days)(months[x.month]??=[]).push(x);
-
-              merged={
-                found:days.length>0,
-                year:String(selectedYear),
-                days,
-                months
-              };
-
+              const months={}; for(const x of days)(months[x.month]??=[]).push(x);
+              merged={found:days.length>0,year:String(selectedYear),days,months};
               renderAndRestore(merged,`第 ${part}/4 季找到新紀錄，繼續補找…`);
-
-              try{
-                await saveYearCloudCache(u,t,selectedYear,merged);
-              }catch{}
-            }else{
-              updateLivePanel(`第 ${part}/4 季暫時沒有新的紀錄…`);
+              try{await saveYearCloudCache(u,t,selectedYear,merged)}catch{}
             }
-          }else{
-            updateLivePanel(`第 ${part}/4 季暫時沒有找到紀錄…`);
           }
-        }else{
-          updateLivePanel(`第 ${part}/4 季回應較慢，先繼續下一季…`);
         }
-      }catch(e){
-        if(e?.name==="AbortError")throw e;
-        updateLivePanel(`第 ${part}/4 季暫時無法完成，先繼續…`);
-      }
-
+      }catch(e){ if(e?.name==="AbortError")throw e; }
       completedParts=part;
       updateLivePanel(`第 ${part}/4 季完成，準備下一段…`);
     }
 
     const days=[...map.values()].sort((a,b)=>String(a.date).localeCompare(String(b.date)));
-    const months={};
-    for(const x of days)(months[x.month]??=[]).push(x);
-
-    merged={
-      found:days.length>0,
-      year:String(selectedYear),
-      days,
-      months
-    };
-
+    const months={}; for(const x of days)(months[x.month]??=[]).push(x);
+    merged={found:days.length>0,year:String(selectedYear),days,months};
     render(merged);
 
     if(merged.found){
-      try{
-        await saveYearCloudCache(u,t,selectedYear,merged);
-      }catch{}
+      try{await saveYearCloudCache(u,t,selectedYear,merged)}catch{}
       if(statusEl)statusEl.textContent=`${selectedYear} 全年搜尋完成，共找到 ${days.length} 筆保存紀錄。可直接換年份再搜尋。`;
     }else{
-      if(statusEl)statusEl.textContent=`${selectedYear} 全年搜尋完成，目前沒有找到可用紀錄。可換年份再搜尋。`;
+      if(statusEl)statusEl.textContent=`${selectedYear} 全年搜尋完成，目前沒有找到可用紀錄。請確認帳號或換年份再試。`;
     }
-
   }catch(e){
     if(e?.name==="AbortError"){
-      if(statusEl)statusEl.textContent="已中止搜尋，可直接選其他年份再按「搭上時光機」。";
+      if(statusEl)statusEl.textContent="已中止搜尋，可直接選其他年份再搜尋。";
     }else{
-      if(statusEl)statusEl.textContent="這次搜尋沒有完整完成，可直接重新搜尋或換年份。";
+      if(statusEl)statusEl.textContent="這次搜尋沒有完整完成，可重新搜尋或換年份。";
     }
   }finally{
     if(liveTimer)clearInterval(liveTimer);
