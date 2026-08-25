@@ -50,6 +50,45 @@ module.exports=async function(req,res){
   if(!exactDate && !/^[1-4]$/.test(part))return res.status(400).json({error:"分段"});
   if(exactDate && !/^\d{8}$/.test(exactDate))return res.status(400).json({error:"exactDate 請用 YYYYMMDD"});
 
+  if(String(req.query.precheck||"")==="1"){
+    const candidates=[...new Set([
+      `http://www.wretch.cc:80/${type}/${username}`,
+      `http://www.wretch.cc/${type}/${username}`,
+      `http://wretch.cc:80/${type}/${username}`,
+      `http://wretch.cc/${type}/${username}`
+    ])];
+
+    // Probe several years, not just one date/year. This is deliberately
+    // conservative: a miss here is "no quick evidence", not proof of nonexistence.
+    const stamps=["20130101","20120101","20100101","20080101","20060101"];
+    const evidence=[];
+
+    for(const stamp of stamps){
+      for(let i=0;i<candidates.length;i+=2){
+        const batch=candidates.slice(i,i+2);
+        const got=await Promise.all(batch.map(async target=>{
+          const hit=await availability(target,stamp,3200);
+          return hit ? {target,requested:stamp,timestamp:hit.timestamp,url:hit.url} : null;
+        }));
+        evidence.push(...got.filter(Boolean));
+        if(evidence.length) break;
+        await sleep(90);
+      }
+      if(evidence.length) break;
+    }
+
+    return res.status(200).json({
+      mode:"precheck",
+      username,
+      type,
+      quickEvidence:evidence.length>0,
+      evidence:evidence.slice(0,4),
+      // IMPORTANT: false does not mean the account definitely never existed.
+      // Frontend may warn, but must still let the user continue a deep search.
+      conclusive:false
+    });
+  }
+
   if(exactDate){
     const testTargets=[...new Set([
       `http://wretch.cc/${type}/${username}`,
@@ -96,26 +135,35 @@ module.exports=async function(req,res){
   // Use the single canonical URL that already proved successful in diagnostics.
   const target=`http://www.wretch.cc:80/${type}/${username}`;
 
-  // V37: sparse dates can miss captures like 2012-01-12.
-  // Scan every odd day. Any capture is at most 1 day away from a probe,
-  // while still keeping concurrency low enough to avoid Archive throttling.
-  const probeDays=[1,3,5,7,9,11,13,15,17,19,21,23,25,27,29,31];
+  // V41: two-stage scan.
+  // Stage 1 quickly probes every 4 days. Stage 2 fills the gaps.
+  // Keep concurrency at 3: faster than V37, but still far below the V34 burst.
+  const fastDays=[1,5,9,13,17,21,25,29];
+  const fillDays=[3,7,11,15,19,23,27,31];
   const hits=[];
+  let fastHitCount=0;
 
-  // Small sequential batches to avoid Archive throttling.
-  for(const month of quarter){
-    const mm=String(month).padStart(2,"0");
-
-    for(let i=0;i<probeDays.length;i+=2){
-      const pair=probeDays.slice(i,i+2);
-      const got=await Promise.all(pair.map(day=>{
-        const dd=String(day).padStart(2,"0");
-        return availability(target,`${year}${mm}${dd}`);
-      }));
-      hits.push(...got.filter(Boolean));
-      await sleep(180);
+  async function runDays(days){
+    for(const month of quarter){
+      const mm=String(month).padStart(2,"0");
+      for(let i=0;i<days.length;i+=3){
+        const batch=days.slice(i,i+3);
+        const got=await Promise.all(batch.map(day=>{
+          const dd=String(day).padStart(2,"0");
+          return availability(target,`${year}${mm}${dd}`,4200);
+        }));
+        hits.push(...got.filter(Boolean));
+        await sleep(110);
+      }
     }
   }
+
+  // Fast pass first.
+  await runDays(fastDays);
+  fastHitCount=hits.length;
+
+  // Fill pass: keeps coverage close to V37 without a huge simultaneous burst.
+  await runDays(fillDays);
 
   const map=new Map();
   for(const h of hits){
@@ -147,7 +195,8 @@ module.exports=async function(req,res){
     part:Number(part),
     days,
     months,
-    source:"throttled-availability",
+    source:"two-stage-availability",
+    fastHitCount,
     target
   };
 
@@ -155,7 +204,7 @@ module.exports=async function(req,res){
 
   if(result.found){
     // part cache
-    await cacheSet(cfg,`ytm:v37:${username.toLowerCase()}:${type}:${year}:${part}`,result,7776000);
+    await cacheSet(cfg,`ytm:v42:${username.toLowerCase()}:${type}:${year}:${part}`,result,7776000);
 
     // merge to full-year shared cache used by /api/year-cache
     if(cfg){
