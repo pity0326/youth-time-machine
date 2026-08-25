@@ -40,102 +40,116 @@ module.exports=async function handler(req,res){
   if(!/^[1-4]$/.test(String(part||"")))
     return res.status(400).json({error:"分段不正確"});
 
-  const ranges={"1":[1,2,3],"2":[4,5,6],"3":[7,8,9],"4":[10,11,12]};
-  const monthsWanted=ranges[String(part)];
-
+  const ranges={
+    "1":["0101","0331"],
+    "2":["0401","0630"],
+    "3":["0701","0930"],
+    "4":["1001","1231"]
+  };
+  const [from,to]=ranges[String(part)];
   const raw=String(username);
   const lower=raw.toLowerCase();
 
-  const bases=[...new Set([
+  // Keep variants small and useful. Too many variants made V19 very slow.
+  const urls=[...new Set([
     `http://wretch.cc/${type}/${raw}`,
     `http://www.wretch.cc/${type}/${raw}`,
-    `https://wretch.cc/${type}/${raw}`,
-    `https://www.wretch.cc/${type}/${raw}`,
     `http://wretch.cc/${type}/${lower}`,
-    `http://www.wretch.cc/${type}/${lower}`,
-    `wretch.cc/${type}/${lower}`,
-    `www.wretch.cc/${type}/${lower}`
+    `http://www.wretch.cc/${type}/${lower}`
   ])];
 
   const cfg=redisConfig();
-  const cacheKey=`ytm:autoindex:v1:${lower}:${type}:${year}:${part}`;
+  const cacheKey=`ytm:fastpart:v1:${lower}:${type}:${year}:${part}`;
 
   const cached=await cacheGet(cfg,cacheKey);
   if(cached?.found===true){
     return res.status(200).json({...cached,serverCache:true});
   }
 
-  async function timedFetch(url,timeout=5500,accept="application/json"){
+  async function queryCDX(url){
+    const q="https://web.archive.org/cdx/search/cdx?url="+encodeURIComponent(url)+
+      "&from="+year+from+
+      "&to="+year+to+
+      "&output=json"+
+      "&fl=timestamp,original"+
+      "&collapse=timestamp:8"+
+      "&limit=120"+
+      "&gzip=false";
+
     const c=new AbortController();
-    const timer=setTimeout(()=>c.abort(),timeout);
+    const timer=setTimeout(()=>c.abort(),7000);
+
     try{
-      const r=await fetch(url,{
-        headers:{"Accept":accept,"User-Agent":"YouthTimeMachine/auto-index-1.0"},
+      const r=await fetch(q,{
+        headers:{"Accept":"application/json","User-Agent":"YouthTimeMachine/fast-quarter-1.0"},
         signal:c.signal,
         cache:"no-store"
       });
       clearTimeout(timer);
-      return r;
+
+      if(!r.ok)return [];
+
+      const text=await r.text();
+      let data;
+      try{data=JSON.parse(text)}catch{return []}
+
+      if(!Array.isArray(data)||data.length<=1)return [];
+
+      return data.slice(1).map(row=>({
+        ts:String(row?.[0]||""),
+        original:String(row?.[1]||url)
+      })).filter(x=>x.ts.length>=8);
+
     }catch{
       clearTimeout(timer);
-      return null;
+      return [];
     }
   }
 
-  async function cdx(base,month){
-    const mm=String(month).padStart(2,"0");
-    const q="https://web.archive.org/cdx/search/cdx?url="+encodeURIComponent(base)+
-      "&from="+year+mm+"01"+
-      "&to="+year+mm+"31"+
-      "&output=json&fl=timestamp,original&collapse=timestamp:8&limit=40&gzip=false";
+  // All useful URL variants run in parallel.
+  const groups=await Promise.all(urls.map(queryCDX));
+  let rows=groups.flat();
 
-    const r=await timedFetch(q,5000);
-    if(!r?.ok)return [];
+  // Lightweight fallback: if CDX returns nothing, check one point per month.
+  if(!rows.length){
+    const quarterMonths={
+      "1":[1,2,3],"2":[4,5,6],"3":[7,8,9],"4":[10,11,12]
+    }[String(part)];
 
-    try{
-      const data=JSON.parse(await r.text());
-      if(!Array.isArray(data)||data.length<=1)return [];
-      return data.slice(1).map(x=>({
-        ts:String(x?.[0]||""),
-        original:String(x?.[1]||base)
-      })).filter(x=>x.ts.length>=8);
-    }catch{return []}
-  }
+    async function availability(url,month){
+      const mm=String(month).padStart(2,"0");
+      const api="https://archive.org/wayback/available?url="+
+        encodeURIComponent(url)+"&timestamp="+year+mm+"15";
 
-  async function available(base,month){
-    const mm=String(month).padStart(2,"0");
-    const stamp=`${year}${mm}15`;
-    const u="https://archive.org/wayback/available?url="+encodeURIComponent(base)+"&timestamp="+stamp;
-    const r=await timedFetch(u,4500);
-    if(!r?.ok)return null;
+      const c=new AbortController();
+      const timer=setTimeout(()=>c.abort(),3500);
 
-    try{
-      const d=await r.json();
-      const h=d?.archived_snapshots?.closest;
-      if(!h?.available||!h.timestamp)return null;
-      const ts=String(h.timestamp);
-      if(!ts.startsWith(year))return null;
-      return {ts,original:base};
-    }catch{return null}
-  }
+      try{
+        const r=await fetch(api,{
+          headers:{"Accept":"application/json","User-Agent":"YouthTimeMachine/fast-quarter-1.0"},
+          signal:c.signal,
+          cache:"no-store"
+        });
+        clearTimeout(timer);
 
-  const rows=[];
+        if(!r.ok)return null;
+        const d=await r.json();
+        const hit=d?.archived_snapshots?.closest;
+        if(!hit?.available||!hit.timestamp)return null;
 
-  // 每個季度逐月自動嘗試：
-  // 先 CDX；該月 CDX 沒資料，再用 availability。
-  // 任何成功結果都會寫入 Upstash，供其他裝置/使用者共用。
-  for(const month of monthsWanted){
-    let monthRows=[];
+        const ts=String(hit.timestamp);
+        if(!ts.startsWith(year))return null;
 
-    const cdxGroups=await Promise.all(bases.map(base=>cdx(base,month)));
-    monthRows=cdxGroups.flat();
-
-    if(!monthRows.length){
-      const hits=(await Promise.all(bases.map(base=>available(base,month)))).filter(Boolean);
-      monthRows=hits;
+        return {ts,original:url};
+      }catch{
+        clearTimeout(timer);
+        return null;
+      }
     }
 
-    rows.push(...monthRows);
+    rows=(await Promise.all(
+      urls.flatMap(url=>quarterMonths.map(month=>availability(url,month)))
+    )).filter(Boolean);
   }
 
   const seen=new Set();
@@ -145,6 +159,7 @@ module.exports=async function handler(req,res){
     const date=row.ts.slice(0,8);
     if(date.slice(0,4)!==String(year)||seen.has(date))continue;
     seen.add(date);
+
     days.push({
       date,
       month:date.slice(4,6),
@@ -167,13 +182,11 @@ module.exports=async function handler(req,res){
     year,
     part:Number(part),
     days,
-    months,
-    source:"auto-index"
+    months
   };
 
-  // 只保存成功資料，失敗或 0 筆永遠不鎖死。
   if(result.found){
-    await cacheSet(cfg,cacheKey,result,7776000); // 90 days
+    await cacheSet(cfg,cacheKey,result,7776000);
   }
 
   return res.status(200).json(result);
