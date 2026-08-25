@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Youth Time Machine V56 production | quick-account-check removed -->
+<!-- Youth Time Machine V57 equal-buttons no-account-check -->
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
@@ -519,6 +519,39 @@ input[type=text]:focus{border-color:#4f6840}
   }
 }
 
+
+
+/* V57：三個主按鈕完全等比例 */
+.action-row{
+  display:grid !important;
+  grid-template-columns:repeat(3,minmax(0,1fr)) !important;
+  gap:8px !important;
+  width:100% !important;
+  align-items:stretch !important;
+}
+.action-row #searchBtn,
+.action-row #stopBtn,
+.action-row #waybackDirectBtn{
+  width:100% !important;
+  height:46px !important;
+  min-height:46px !important;
+  margin:0 !important;
+  padding:0 10px !important;
+  box-sizing:border-box !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  border-radius:6px !important;
+  font-size:14px !important;
+  font-weight:700 !important;
+  line-height:1.1 !important;
+  white-space:nowrap !important;
+}
+@media(max-width:700px){
+  .action-row{
+    grid-template-columns:1fr !important;
+  }
+}
 
 </style>
 </head>
