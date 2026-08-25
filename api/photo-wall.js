@@ -1,4 +1,3 @@
-
 function redisConfig(){
   const redisUrl=process.env.UPSTASH_REDIS_REST_URL||process.env.KV_REST_API_URL;
   const redisToken=process.env.UPSTASH_REDIS_REST_TOKEN||process.env.KV_REST_API_TOKEN;
@@ -34,96 +33,198 @@ module.exports = async function handler(req,res){
   try{
     const username=String(req.query.username||"").trim();
     const year=String(req.query.year||"2013").trim();
-    let ts=String(req.query.ts||"").trim();
+    const hintTs=String(req.query.ts||"").trim();
 
-    if(!/^[A-Za-z0-9._-]{1,80}$/.test(username))return res.status(400).json({ok:false,error:"帳號格式不正確"});
-    if(!/^\d{4}$/.test(year))return res.status(400).json({ok:false,error:"年份格式不正確"});
-    if(ts&&!/^\d{14}$/.test(ts))ts="";
+    if(!/^[A-Za-z0-9._-]{1,80}$/.test(username)){
+      return res.status(400).json({ok:false,error:"帳號格式不正確"});
+    }
+    if(!/^\d{4}$/.test(year)){
+      return res.status(400).json({ok:false,error:"年份格式不正確"});
+    }
 
     const cfg=redisConfig();
-    const cacheKey=`ytm:photos:v1:${username.toLowerCase()}:${year}`;
+    const cacheKey=`ytm:photos:v2:${username.toLowerCase()}:${year}`;
 
-    // 1. Return previously recovered photo list immediately.
+    // 成功挖過就直接回雲端快取，不再碰 Wayback。
     const cached=await cacheGet(cfg,cacheKey);
     if(cached?.ok===true&&Array.isArray(cached.photos)&&cached.photos.length){
       return res.status(200).json({...cached,serverCache:true});
     }
 
-    async function fetchText(url,timeout=8500){
-      const c=new AbortController(),tm=setTimeout(()=>c.abort(),timeout);
+    async function timedFetch(url,timeout=7000,accept="*/*"){
+      const c=new AbortController();
+      const t=setTimeout(()=>c.abort(),timeout);
       try{
-        const r=await fetch(url,{headers:{"User-Agent":"Mozilla/5.0"},redirect:"follow",signal:c.signal});
-        clearTimeout(tm);if(!r.ok)return null;return await r.text();
-      }catch{clearTimeout(tm);return null}
+        const r=await fetch(url,{
+          headers:{"User-Agent":"YouthTimeMachine/2.2","Accept":accept},
+          redirect:"follow",
+          signal:c.signal,
+          cache:"no-store"
+        });
+        clearTimeout(t);
+        return r;
+      }catch(e){
+        clearTimeout(t);
+        return null;
+      }
     }
 
-    const rootUrl=`http://www.wretch.cc/album/${encodeURIComponent(username)}`;
-
-    if(!ts){
-      const c=new AbortController(),tm=setTimeout(()=>c.abort(),6500);
-      let r;
+    async function availability(url,stamp){
+      const api="https://archive.org/wayback/available?url="+
+        encodeURIComponent(url)+"&timestamp="+encodeURIComponent(stamp);
+      const r=await timedFetch(api,5500,"application/json");
+      if(!r?.ok)return null;
       try{
-        r=await fetch("https://archive.org/wayback/available?url="+encodeURIComponent(rootUrl)+"&timestamp="+year+"1231",
-          {headers:{"User-Agent":"Mozilla/5.0"},signal:c.signal});
-        clearTimeout(tm);
-      }catch{clearTimeout(tm);return res.status(503).json({ok:false,error:"照片時光機暫時忙碌"})}
-      if(!r.ok)return res.status(503).json({ok:false,error:"照片時光機暫時忙碌"});
-      const d=await r.json(),hit=d?.archived_snapshots?.closest;
-      if(!hit?.available||!hit.timestamp)return res.status(200).json({ok:true,total:0,recoveredCount:0,photos:[]});
-      ts=String(hit.timestamp);
+        const d=await r.json(),hit=d?.archived_snapshots?.closest;
+        if(!hit?.available||!hit.timestamp)return null;
+        return {timestamp:String(hit.timestamp),url:String(hit.url||"")};
+      }catch{return null}
+    }
+
+    async function rawHtml(url,ts){
+      if(!ts)return null;
+      const r=await timedFetch(`https://web.archive.org/web/${ts}id_/${url}`,7500,"text/html,*/*");
+      if(!r?.ok)return null;
+      const ct=(r.headers.get("content-type")||"").toLowerCase();
+      if(ct && !ct.includes("text") && !ct.includes("html"))return null;
+      try{return await r.text()}catch{return null}
     }
 
     const account=encodeURIComponent(username);
-    const urls=[
-      rootUrl,
-      ...Array.from({length:20},(_,i)=>`http://www.wretch.cc/album/album.php?id=${account}&book=${i+1}`)
+    const rootUrls=[
+      `http://www.wretch.cc/album/${account}`,
+      `http://www.wretch.cc/album/index.php?id=${account}`
     ];
 
-    const pages=[];
-    for(let i=0;i<urls.length;i+=4){
-      const batch=await Promise.all(urls.slice(i,i+4).map(u=>fetchText(`https://web.archive.org/web/${ts}id_/${u}`)));
-      pages.push(...batch.filter(Boolean));
+    // 先收集可用的首頁快照，不再假設一個 timestamp 能套用所有 book。
+    const rootPages=[];
+    for(const rootUrl of rootUrls){
+      const candidates=[];
+      if(/^\d{14}$/.test(hintTs))candidates.push(hintTs);
+
+      const hit=await availability(rootUrl,`${year}1231`);
+      if(hit?.timestamp)candidates.push(hit.timestamp);
+
+      for(const ts of [...new Set(candidates)]){
+        const h=await rawHtml(rootUrl,ts);
+        if(h){
+          rootPages.push({url:rootUrl,ts,html:h});
+          break;
+        }
+      }
     }
 
-    let thumbs=[...pages.join("\n").matchAll(/<img[^>]+src=["']([^"']+)["']/gi)]
+    // 從首頁抓 book 編號；抓不到時仍嘗試 1~20。
+    const bookNums=new Set();
+    for(const p of rootPages){
+      for(const m of p.html.matchAll(/(?:book=|\/album\/)(\d{1,3})(?:[&"'<>]|$)/gi)){
+        const n=Number(m[1]);
+        if(n>=1&&n<=100)bookNums.add(n);
+      }
+      for(const m of p.html.matchAll(/album\.php\?[^"'<>]*book=(\d{1,3})/gi)){
+        const n=Number(m[1]);
+        if(n>=1&&n<=100)bookNums.add(n);
+      }
+    }
+    if(!bookNums.size){
+      for(let i=1;i<=20;i++)bookNums.add(i);
+    }
+
+    // 每一本相簿「各自找自己的 Wayback timestamp」。
+    // 這是修正重點：之前用同一個 ts 套全部 book，常會得到 0 張。
+    const bookUrls=[...bookNums].slice(0,30).map(n=>
+      `http://www.wretch.cc/album/album.php?id=${account}&book=${n}`
+    );
+
+    const albumPages=[...rootPages.map(x=>x.html)];
+
+    for(let i=0;i<bookUrls.length;i+=5){
+      const batch=bookUrls.slice(i,i+5);
+
+      const htmls=await Promise.all(batch.map(async url=>{
+        const hit=await availability(url,`${year}1231`);
+        if(!hit?.timestamp)return null;
+        return await rawHtml(url,hit.timestamp);
+      }));
+
+      albumPages.push(...htmls.filter(Boolean));
+    }
+
+    if(!albumPages.length){
+      return res.status(200).json({
+        ok:true,
+        total:0,
+        recoveredCount:0,
+        photos:[],
+        reason:"no_album_pages"
+      });
+    }
+
+    let thumbs=[...albumPages.join("\n").matchAll(/<img[^>]+src=["']([^"']+)["']/gi)]
       .map(m=>m[1].replace(/&amp;/g,"&"))
-      .filter(u=>/wretch\.yimg\.com/i.test(u)&&/\/thumbs\//i.test(u)&&/\.(jpg|jpeg|png|gif)(?:\?|$)/i.test(u))
+      .filter(u=>
+        /wretch\.yimg\.com/i.test(u) &&
+        /\/thumbs\//i.test(u) &&
+        /\.(?:jpg|jpeg|png|gif)(?:\?|$)/i.test(u)
+      )
       .map(u=>u.startsWith("//")?"http:"+u:u);
 
-    thumbs=[...new Set(thumbs)].slice(0,120);
+    thumbs=[...new Set(thumbs)].slice(0,150);
 
-    async function checkOne(imageUrl){
-      const c=new AbortController(),tm=setTimeout(()=>c.abort(),5000);
-      try{
-        const q="https://archive.org/wayback/available?url="+encodeURIComponent(imageUrl)+"&timestamp="+ts.slice(0,8);
-        const r=await fetch(q,{headers:{"User-Agent":"Mozilla/5.0"},signal:c.signal});
-        clearTimeout(tm);if(!r.ok)return null;
-        const d=await r.json(),hit=d?.archived_snapshots?.closest;
-        if(!hit?.available||!hit.timestamp)return null;
-        return {imageUrl,timestamp:String(hit.timestamp)};
-      }catch{clearTimeout(tm);return null}
+    if(!thumbs.length){
+      return res.status(200).json({
+        ok:true,
+        total:0,
+        recoveredCount:0,
+        photos:[],
+        albumPages:albumPages.length,
+        reason:"no_thumbs"
+      });
+    }
+
+    async function verifyImage(imageUrl){
+      const hit=await availability(imageUrl,`${year}1231`);
+      if(!hit?.timestamp)return null;
+      return {
+        imageUrl,
+        timestamp:hit.timestamp
+      };
     }
 
     const found=[];
     for(let i=0;i<thumbs.length;i+=10){
-      found.push(...(await Promise.all(thumbs.slice(i,i+10).map(checkOne))).filter(Boolean));
+      const batch=thumbs.slice(i,i+10);
+      found.push(...(await Promise.all(batch.map(verifyImage))).filter(Boolean));
     }
 
     const photos=found.map((x,i)=>({
       index:i+1,
       timestamp:x.timestamp,
-      proxyUrl:"/api/photo-image?ts="+encodeURIComponent(x.timestamp)+"&url="+encodeURIComponent(x.imageUrl)
+      proxyUrl:"/api/photo-image?ts="+encodeURIComponent(x.timestamp)+
+        "&url="+encodeURIComponent(x.imageUrl)
     }));
 
-    const result={ok:true,username,year,snapshotTimestamp:ts,albumPages:pages.length,total:thumbs.length,recoveredCount:photos.length,photos};
+    const result={
+      ok:true,
+      username,
+      year,
+      albumPages:albumPages.length,
+      total:thumbs.length,
+      recoveredCount:photos.length,
+      photos
+    };
 
-    // 2. Never cache zero-photo failures. A later retry can recover them.
+    // 只有真的挖到照片才快取 30 天。
     if(photos.length){
-      await cacheSet(cfg,cacheKey,result,2592000); // 30 days
+      await cacheSet(cfg,cacheKey,result,2592000);
     }
 
     return res.status(200).json(result);
+
   }catch{
-    return res.status(503).json({ok:false,error:"照片時光機暫時忙碌"});
+    return res.status(503).json({
+      ok:false,
+      error:"照片時光機暫時忙碌"
+    });
   }
 };
