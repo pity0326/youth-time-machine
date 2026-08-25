@@ -12,40 +12,90 @@ export default async function handler(req, res) {
     if (!response.ok) {
       return res.status(502).json({
         ok: false,
-        error: "Wayback 頁面讀取失敗",
+        error: "Wayback 相簿頁面讀取失敗",
         status: response.status
       });
     }
 
     const html = await response.text();
 
-    // 抓 href
-    const hrefs = [
-      ...html.matchAll(/href=["']([^"']+)["']/gi)
+    // 抓所有照片頁連結，例如：
+    // ./show.php?i=BaBy217&b=2&f=1060718966&p=1
+    const showLinks = [
+      ...html.matchAll(/href=["']([^"']*show\.php[^"']*)["']/gi)
     ].map(m => m[1]);
 
-    // 抓 img src
-    const images = [
-      ...html.matchAll(/<img[^>]+src=["']([^"']+)["']/gi)
-    ].map(m => m[1]);
+    const uniqueLinks = [...new Set(showLinks)];
 
-    // 找出可能與相簿 / 照片有關的連結
-    const photoLinks = hrefs.filter(url =>
-      /album|photo|show|book|pic|image/i.test(url)
-    );
+    const photos = [];
+
+    for (const link of uniqueLinks.slice(0, 30)) {
+      try {
+        const fullUrl = new URL(
+          link,
+          "http://www.wretch.cc/album/"
+        ).href;
+
+        const waybackPhotoPage =
+          "https://web.archive.org/web/20131227084024id_/" +
+          fullUrl;
+
+        const r = await fetch(waybackPhotoPage, {
+          headers: {
+            "User-Agent": "Mozilla/5.0"
+          }
+        });
+
+        if (!r.ok) continue;
+
+        const pageHtml = await r.text();
+
+        const imgs = [
+          ...pageHtml.matchAll(/<img[^>]+src=["']([^"']+)["']/gi)
+        ].map(m => m[1]);
+
+        // 找最像真正照片的網址
+        const candidates = imgs.filter(u =>
+          /wretch\.yimg\.com|pic\.wretch\.cc/i.test(u)
+        );
+
+        for (const img of candidates) {
+          let clean = img;
+
+          if (clean.startsWith("//")) {
+            clean = "http:" + clean;
+          }
+
+          if (clean.startsWith("/")) {
+            clean = "http://www.wretch.cc" + clean;
+          }
+
+          photos.push({
+            photoPage: waybackPhotoPage,
+            originalImage: clean,
+            archivedImage:
+              "https://web.archive.org/web/20131227084024id_/" +
+              clean
+          });
+        }
+
+      } catch {}
+    }
+
+    // 去除重複圖片
+    const seen = new Set();
+
+    const finalPhotos = photos.filter(p => {
+      if (seen.has(p.originalImage)) return false;
+      seen.add(p.originalImage);
+      return true;
+    });
 
     return res.status(200).json({
       ok: true,
-
-      htmlLength: html.length,
-
-      hrefCount: hrefs.length,
-
-      imageCount: images.length,
-
-      photoLinks: [...new Set(photoLinks)].slice(0, 100),
-
-      images: [...new Set(images)].slice(0, 100)
+      photoPageCount: uniqueLinks.length,
+      recoveredCount: finalPhotos.length,
+      photos: finalPhotos.slice(0, 50)
     });
 
   } catch (error) {
