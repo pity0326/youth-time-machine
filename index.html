@@ -480,7 +480,7 @@ const older=document.getElementById("olderYears");[2003,2004,2005,2006,2007,2008
 function toggleOlder(){older.classList.toggle("show")}
 function stopSearch(){if(activeController)activeController.abort()}
 function timer(on){clearInterval(timerId);if(!on)return;startedAt=Date.now();timerId=setInterval(()=>{const e=document.getElementById("elapsed");if(e)e.textContent=((Date.now()-startedAt)/1000).toFixed(1)},100)}
-function key(u,t,y){return`ytm:${u}:${t}:${y}`}
+function key(u,t,y){return`ytm:v5:${u.toLowerCase()}:${t}:${y}`}
 function calendar(u,t){return`https://web.archive.org/web/*/http://www.wretch.cc/${t}/${encodeURIComponent(u)}`}
 function toggleAccountHelp(){document.getElementById("accountHelp").classList.toggle("show")}
 function buildShareCard(data,u,t,y){
@@ -779,7 +779,7 @@ async function rescuePhotos(){
   btn.textContent="正在翻找…";
   grid.innerHTML="";
   if(tip)tip.style.display="none";
-  status.innerHTML="⏳ 正在翻找你的青春照片…<br><span class='small'>正在整理相簿，照片會一張一張慢慢出現。</span>";
+  status.innerHTML="⏳ 正在翻找你的青春照片…<br><span class='small'>舊照片需要逐張確認，第一次可能會稍微久一點。</span>";
 
   try{
     const res=await fetch(`/api/photo-wall?username=${encodeURIComponent(u)}&year=${encodeURIComponent(selectedYear)}`,{cache:"no-store"});
@@ -851,94 +851,60 @@ async function incrementStats(){
 }
 
 async function searchYear(){
-  const u=document.getElementById("username").value.trim();
-  const t=document.querySelector('input[name=type]:checked').value;
-  const r=document.getElementById("result");
-  const sb=document.getElementById("searchBtn");
-  const xb=document.getElementById("stopBtn");
+const u=document.getElementById("username").value.trim(),t=document.querySelector('input[name=type]:checked').value,r=document.getElementById("result"),sb=document.getElementById("searchBtn"),xb=document.getElementById("stopBtn");
+if(!u){alert("請先輸入無名帳號");return}
+if(!/^[A-Za-z0-9._-]{1,80}$/.test(u)){alert("帳號格式不正確");return}
 
-  if(!u){alert("請先輸入無名帳號");return}
-  if(!/^[A-Za-z0-9._-]{1,80}$/.test(u)){alert("帳號格式不正確");return}
+const k=key(u,t,selectedYear);
 
-  // 每一次按搜尋都重新建立 controller，並立刻啟動秒數。
-  if(activeController) activeController.abort();
-  activeController=new AbortController();
-
-  sb.disabled=true;
-  sb.textContent="🔎 搜尋中…";
-  xb.disabled=false;
-
-  r.innerHTML=`<div class="box">⏳ 正在尋找 ${selectedYear} 年的青春紀錄…
-    <div class="small">已搜尋 <strong id="elapsed">0.0</strong> 秒，可隨時按「中止搜尋」。</div>
-    <a class="fallback" target="_blank" rel="noopener" href="${calendar(u,t)}">直接前往 Wayback</a>
-  </div>`;
-  timer(true);
-
-  const hardTimer=setTimeout(()=>{
-    if(activeController) activeController.abort();
-  },16000);
-
-  const k=key(u,t,selectedYear);
-
-  try{
-    // 快取仍保留，但畫面不會卡住。
-    try{
-      const c=JSON.parse(localStorage.getItem(k));
-      if(c&&Date.now()-c.savedAt<604800000){
-        clearTimeout(hardTimer);
-        await incrementStats();
-        render(c.data,true);
-        return;
-      }
-    }catch{}
-
-    const res=await fetch(`/api/year-fast?username=${encodeURIComponent(u)}&type=${t}&year=${selectedYear}`,{
-      signal:activeController.signal,
-      cache:"no-store"
-    });
-
-    const d=await res.json();
-    if(!res.ok) throw new Error(d.error||"查詢失敗");
-
-    clearTimeout(hardTimer);
+// 只使用「確定找到資料」的快取。
+// 舊版如果把 found:false 存在手機，就會造成不到 1 秒直接顯示沒找到。
+try{
+  const c=JSON.parse(localStorage.getItem(k));
+  if(c && c.data && c.data.found===true && Date.now()-c.savedAt<604800000){
     await incrementStats();
-
-    try{
-      localStorage.setItem(k,JSON.stringify({savedAt:Date.now(),data:d}));
-    }catch{}
-
-    render(d);
-
-  }catch(e){
-    clearTimeout(hardTimer);
-
-    const elapsed=((Date.now()-startedAt)/1000).toFixed(1);
-    const stopped=e.name==="AbortError";
-
-    r.innerHTML=stopped
-      ? `<div class="box"><strong>⏹️ 已停止這次搜尋</strong>
-           <div class="small">這次搜尋在 ${elapsed} 秒停止。可以直接再按一次「搭上時光機」，不用換帳號或年份。</div>
-           <div class="result-actions">
-             <button type="button" class="mini-btn primary" onclick="searchYear()">🔄 再搜尋一次</button>
-             <a class="mini-btn" target="_blank" rel="noopener" href="${calendar(u,t)}">直接前往 Wayback</a>
-           </div>
-         </div>`
-      : `<div class="box"><strong>📡 這次沒有完整連上</strong>
-           <div class="small">Internet Archive 偶爾會塞車，這不代表你的帳號沒有資料。可以直接再試一次。</div>
-           <div class="result-actions">
-             <button type="button" class="mini-btn primary" onclick="searchYear()">🔄 再搜尋一次</button>
-             <a class="mini-btn" target="_blank" rel="noopener" href="${calendar(u,t)}">直接前往 Wayback</a>
-           </div>
-         </div>`;
-  }finally{
-    clearTimeout(hardTimer);
-    timer(false);
-    activeController=null;
-    sb.disabled=false;
-    sb.textContent="▶ 搭上時光機";
-    xb.disabled=true;
+    render(c.data,true);
+    return;
   }
-}
+}catch{}
+
+if(activeController)activeController.abort();
+activeController=new AbortController();
+sb.disabled=true;
+xb.disabled=false;
+r.innerHTML=`<div class="box">⏳ 正在尋找 ${selectedYear} 年的青春紀錄…
+  <div class="small">已搜尋 <strong id="elapsed">0.0</strong> 秒，可隨時中止。</div>
+  <a class="fallback" target="_blank" rel="noopener" href="${calendar(u,t)}">直接前往 Wayback</a>
+</div>`;
+timer(true);
+
+try{
+  const res=await fetch(`/api/year-fast?username=${encodeURIComponent(u)}&type=${t}&year=${selectedYear}`,{
+    signal:activeController.signal,
+    cache:"no-store"
+  });
+  const d=await res.json();
+  if(!res.ok)throw new Error(d.error||"查詢失敗");
+  await incrementStats();
+
+  // 只有真的找到資料才存 7 天快取，查不到不快取。
+  if(d.found===true){
+    try{localStorage.setItem(k,JSON.stringify({savedAt:Date.now(),data:d}))}catch{}
+  }else{
+    try{localStorage.removeItem(k)}catch{}
+  }
+
+  render(d);
+}catch(e){
+  r.innerHTML=e.name==="AbortError"
+  ?`<div class="box"><strong>⛔ 已中止這次搜尋</strong><div class="small">可以直接重新搜尋，不需要換帳號或年份。</div><div class="result-actions"><button type="button" class="mini-btn primary" onclick="searchYear()">重新搜尋</button><a class="mini-btn" target="_blank" rel="noopener" href="${calendar(u,t)}">直接前往 Wayback</a></div></div>`
+  :`<div class="box"><strong>⏳ 時光機暫時卡住了</strong><div class="small">Internet Archive 現在可能比較忙，這不代表你的帳號沒有資料。可以直接再試一次。</div><div class="result-actions"><button type="button" class="mini-btn primary" onclick="searchYear()">再試一次</button><a class="mini-btn" target="_blank" rel="noopener" href="${calendar(u,t)}">直接前往 Wayback</a></div></div>`;
+}finally{
+  timer(false);
+  activeController=null;
+  sb.disabled=false;
+  xb.disabled=true;
+}}
 document.getElementById("username").addEventListener("keydown",e=>{if(e.key==="Enter")searchYear()});
 loadStats();
 </script>
