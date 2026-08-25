@@ -911,6 +911,29 @@ async function warmNearbyYears(username,type,currentYear){
   }
 }
 
+async function saveYearCloudCache(username,type,year,data){
+  if(!data?.found||!Array.isArray(data.days)||!data.days.length)return;
+  try{
+    await fetch("/api/year-cache",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({username,type,year,data}),
+      cache:"no-store"
+    });
+  }catch{}
+}
+
+async function getYearCloudCache(username,type,year){
+  try{
+    const r=await fetch(`/api/year-cache?username=${encodeURIComponent(username)}&type=${encodeURIComponent(type)}&year=${encodeURIComponent(year)}`,{
+      cache:"no-store"
+    });
+    if(!r.ok)return null;
+    const d=await r.json();
+    return d?.found?d:null;
+  }catch{return null}
+}
+
 async function searchYear(){
   const u=document.getElementById("username").value.trim();
   const t=document.querySelector('input[name=type]:checked').value;
@@ -923,16 +946,6 @@ async function searchYear(){
 
   const k=key(u,t,selectedYear);
 
-  try{
-    const c=JSON.parse(localStorage.getItem(k));
-    if(c?.data?.found===true && Date.now()-c.savedAt<604800000){
-      await incrementStats();
-      render(c.data,true);
-      warmNearbyYears(u,t,selectedYear);
-      return;
-    }
-  }catch{}
-
   if(activeController)activeController.abort();
   activeController=new AbortController();
 
@@ -942,7 +955,7 @@ async function searchYear(){
   r.innerHTML=`<div class="box">
     ⏳ 正在搜尋 ${selectedYear} 年的青春紀錄…
     <div class="small">已搜尋 <strong id="elapsed">0.0</strong> 秒 · 進度 <strong id="yearProgress">0 / 4</strong></div>
-    <div class="small">四個季度會同時搜尋，通常不用再一段一段等。</div>
+    <div class="small">會先讀共享雲端快取，再同時補查四個季度。</div>
     <a class="fallback" target="_blank" rel="noopener" href="${calendar(u,t)}">直接前往 Wayback</a>
   </div>`;
   timer(true);
@@ -953,14 +966,17 @@ async function searchYear(){
   let failed=0;
 
   function mergeDays(days){
+    let added=0;
     for(const x of days||[]){
-      if(!x?.date||seen.has(x.date)) continue;
+      if(!x?.date||seen.has(x.date))continue;
       seen.add(x.date);
       mergedDays.push(x);
+      added++;
     }
+    return added;
   }
 
-  function makeData(partial=true){
+  function makeData(partial=true,serverCache=false){
     const days=mergedDays.slice().sort((a,b)=>a.date.localeCompare(b.date));
     const months={};
     for(const x of days){
@@ -973,50 +989,66 @@ async function searchYear(){
       days,
       months,
       partial,
+      serverCache,
       calendarUrl:calendar(u,t)
     };
   }
 
-  async function loadPart(part){
+  try{
+    // 1. 先讀手機/電腦共同的 Redis 年份快取。
+    const cloud=await getYearCloudCache(u,t,selectedYear);
+    if(cloud?.found){
+      mergeDays(cloud.days);
+      render(makeData(true,true));
+    }
+
+    // 2. 再讀這台裝置舊的 localStorage；若電腦曾找到、雲端沒有，
+    //    立即上傳到 Redis，讓手機/朋友也能共用。
     try{
-      const res=await fetch(`/api/year-part?username=${encodeURIComponent(u)}&type=${t}&year=${selectedYear}&part=${part}`,{
-        signal:activeController.signal,
-        cache:"no-store"
-      });
-
-      if(!res.ok){
-        failed++;
-        return;
+      const local=JSON.parse(localStorage.getItem(k));
+      if(local?.data?.found===true && Date.now()-local.savedAt<604800000){
+        const added=mergeDays(local.data.days);
+        if(added){
+          render(makeData(true,true));
+          saveYearCloudCache(u,t,selectedYear,makeData(true,false));
+        }
       }
+    }catch{}
 
-      const d=await res.json();
-      mergeDays(d.days);
-
-    }catch(e){
-      if(e.name==="AbortError") throw e;
-      failed++;
-    }finally{
-      completed++;
-      const p=document.getElementById("yearProgress");
-      if(p)p.textContent=`${completed} / 4`;
-
-      // 只要新資料進來就立即更新，但搜尋仍繼續。
-      if(mergedDays.length && completed<4){
-        render(makeData(true));
+    async function loadPart(part){
+      try{
+        const res=await fetch(`/api/year-part?username=${encodeURIComponent(u)}&type=${t}&year=${selectedYear}&part=${part}`,{
+          signal:activeController.signal,
+          cache:"no-store"
+        });
+        if(!res.ok){failed++;return}
+        const d=await res.json();
+        const added=mergeDays(d.days);
+        if(added){
+          const current=makeData(true,cloud?.found===true);
+          render(current);
+          saveYearCloudCache(u,t,selectedYear,current);
+        }
+      }catch(e){
+        if(e.name==="AbortError")throw e;
+        failed++;
+      }finally{
+        completed++;
+        const p=document.getElementById("yearProgress");
+        if(p)p.textContent=`${completed} / 4`;
       }
     }
-  }
 
-  try{
-    // 四季並行，避免 V19 第一季卡 30+ 秒才進下一季。
+    // 3. 四個季度並行補資料。
     await Promise.all([1,2,3,4].map(loadPart));
 
-    const finalData=makeData(failed>0);
+    const finalData=makeData(failed>0,false);
 
     await incrementStats();
 
-    if(finalData.found===true){
+    if(finalData.found){
       try{localStorage.setItem(k,JSON.stringify({savedAt:Date.now(),data:finalData}))}catch{}
+      await saveYearCloudCache(u,t,selectedYear,finalData);
       warmNearbyYears(u,t,selectedYear);
     }
 
@@ -1025,7 +1057,9 @@ async function searchYear(){
   }catch(e){
     if(e.name==="AbortError"){
       if(mergedDays.length){
-        render(makeData(true));
+        const d=makeData(true,false);
+        render(d);
+        saveYearCloudCache(u,t,selectedYear,d);
       }else{
         r.innerHTML=`<div class="box"><strong>⛔ 已中止搜尋</strong><div class="small">可以直接再按一次「搭上時光機」。</div><div class="result-actions"><button type="button" class="mini-btn primary" onclick="searchYear()">重新搜尋</button></div></div>`;
       }
