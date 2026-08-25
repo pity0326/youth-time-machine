@@ -1,34 +1,54 @@
 export default async function handler(req, res) {
   try {
-    const baseThumb =
-      "http://f12.wretch.yimg.com/baby217/2/thumbs/t1060718966.jpg";
+    const albumSnapshot =
+      "https://web.archive.org/web/20131227084024id_/http://www.wretch.cc/album/album.php?id=BaBy217&book=2";
 
-    // 依舊無名常見路徑，先測縮圖與幾種可能原圖
-    const candidates = [
-      baseThumb,
+    const albumRes = await fetch(albumSnapshot, {
+      headers: {
+        "User-Agent": "Mozilla/5.0"
+      }
+    });
 
-      // 移除 thumbs/t
-      "http://f12.wretch.yimg.com/baby217/2/1060718966.jpg",
+    if (!albumRes.ok) {
+      return res.status(502).json({
+        ok: false,
+        error: "相簿頁讀取失敗",
+        status: albumRes.status
+      });
+    }
 
-      // 保留 t 但移除 thumbs
-      "http://f12.wretch.yimg.com/baby217/2/t1060718966.jpg"
-    ];
+    const albumHtml = await albumRes.text();
 
-    async function checkWayback(imageUrl) {
+    // 抓無名縮圖
+    const imgs = [
+      ...albumHtml.matchAll(/<img[^>]+src=["']([^"']+)["']/gi)
+    ].map(m => m[1]);
+
+    let thumbs = imgs
+      .filter(u =>
+        /wretch\.yimg\.com/i.test(u) &&
+        /thumbs/i.test(u) &&
+        /\.(jpg|jpeg|png|gif)/i.test(u)
+      )
+      .map(u => {
+        if (u.startsWith("//")) return "http:" + u;
+        if (u.startsWith("/")) return "http://www.wretch.cc" + u;
+        return u;
+      });
+
+    thumbs = [...new Set(thumbs)].slice(0, 30);
+
+    async function checkOne(imageUrl) {
       const controller = new AbortController();
-
-      const timer = setTimeout(() => {
-        controller.abort();
-      }, 7000);
+      const timer = setTimeout(() => controller.abort(), 6000);
 
       try {
-        // 使用較輕量的 Wayback availability API
         const api =
           "https://archive.org/wayback/available" +
           "?url=" + encodeURIComponent(imageUrl) +
           "&timestamp=20131227";
 
-        const response = await fetch(api, {
+        const r = await fetch(api, {
           headers: {
             "User-Agent": "Mozilla/5.0"
           },
@@ -37,15 +57,15 @@ export default async function handler(req, res) {
 
         clearTimeout(timer);
 
-        if (!response.ok) {
+        if (!r.ok) {
           return {
             imageUrl,
             found: false,
-            status: response.status
+            status: r.status
           };
         }
 
-        const data = await response.json();
+        const data = await r.json();
 
         const closest =
           data &&
@@ -74,29 +94,35 @@ export default async function handler(req, res) {
           found: false,
           error:
             error.name === "AbortError"
-              ? "查詢超過 7 秒"
+              ? "timeout"
               : error.message
         };
       }
     }
 
-    // 三個一起查，不要一個一個慢慢等
-    const results = await Promise.all(
-      candidates.map(checkWayback)
-    );
+    // 分批查，避免一次太多請求
+    const results = [];
+    const batchSize = 6;
+
+    for (let i = 0; i < thumbs.length; i += batchSize) {
+      const batch = thumbs.slice(i, i + batchSize);
+
+      const batchResults = await Promise.all(
+        batch.map(checkOne)
+      );
+
+      results.push(...batchResults);
+    }
 
     const recovered = results.filter(x => x.found);
 
     return res.status(200).json({
       ok: true,
-
+      thumbCount: thumbs.length,
       testedCount: results.length,
-
       recoveredCount: recovered.length,
-
-      results,
-
-      recovered
+      recovered,
+      results
     });
 
   } catch (error) {
