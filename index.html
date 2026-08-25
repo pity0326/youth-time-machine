@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Youth Time Machine V50 equal button ratio + purpose note -->
+<!-- Youth Time Machine V51 clean equal-action layout -->
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
@@ -476,113 +476,46 @@ input[type=text]:focus{border-color:#4f6840}
 }
 
 
-/* V46：主操作按鈕同一列 */
-.action-row{
-  display:grid !important;
-  grid-template-columns:1fr 1fr 1fr !important;
-  gap:10px !important;
-  align-items:stretch !important;
-}
-.action-row > *{
-  width:100% !important;
-  margin:0 !important;
-  box-sizing:border-box !important;
-}
-@media(max-width:700px){
-  .action-row{
-    grid-template-columns:1fr !important;
-  }
-}
 
-
-/* V47：三個主功能更平整、俐落 */
+/* V51：主操作區唯一樣式，避免舊版 CSS 互相覆蓋 */
 .action-row{
   display:grid !important;
   grid-template-columns:repeat(3,minmax(0,1fr)) !important;
-  gap:10px !important;
-  align-items:center !important;
+  gap:8px !important;
+  width:100% !important;
+  align-items:stretch !important;
 }
 
-.action-row > button,
-.action-row > a,
-.action-row .wayback-direct-btn{
+.action-row #searchBtn,
+.action-row #stopBtn,
+.action-row #waybackDirectBtn{
+  width:100% !important;
   height:46px !important;
   min-height:46px !important;
-  padding:0 14px !important;
   margin:0 !important;
+  padding:0 10px !important;
+  box-sizing:border-box !important;
   border-radius:6px !important;
   display:flex !important;
   align-items:center !important;
   justify-content:center !important;
-  font-size:15px !important;
+  line-height:1.15 !important;
+  font-size:14px !important;
   font-weight:700 !important;
-  line-height:1 !important;
-  box-sizing:border-box !important;
   white-space:nowrap !important;
-}
-
-/* 避免原本按鈕各自不同高度/陰影 */
-#searchBtn,
-#stopBtn,
-#waybackDirectBtn{
-  width:100% !important;
   box-shadow:none !important;
 }
 
-/* 中止搜尋不要看起來特別高或特別空 */
-#stopBtn{
-  opacity:.92;
-}
-
-/* 桌機維持同一列；手機再改直向 */
 @media(max-width:700px){
   .action-row{
     grid-template-columns:1fr !important;
     gap:8px !important;
   }
-
-  .action-row > button,
-  .action-row > a,
-  .action-row .wayback-direct-btn{
+  .action-row #searchBtn,
+  .action-row #stopBtn,
+  .action-row #waybackDirectBtn{
     height:46px !important;
     min-height:46px !important;
-  }
-}
-
-
-/* V49：三個主按鈕比例微調 */
-.action-row{
-  grid-template-columns:1.25fr .85fr 1.15fr !important;
-  gap:8px !important;
-}
-#searchBtn,
-#stopBtn,
-#waybackDirectBtn{
-  height:46px !important;
-  min-height:46px !important;
-}
-@media(max-width:700px){
-  .action-row{
-    grid-template-columns:1fr !important;
-  }
-}
-
-
-/* V50：三個主按鈕等比例 */
-.action-row{
-  grid-template-columns:repeat(3,minmax(0,1fr)) !important;
-  gap:8px !important;
-}
-#searchBtn,
-#stopBtn,
-#waybackDirectBtn{
-  width:100% !important;
-  height:46px !important;
-  min-height:46px !important;
-}
-@media(max-width:700px){
-  .action-row{
-    grid-template-columns:1fr !important;
   }
 }
 
