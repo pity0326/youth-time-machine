@@ -474,6 +474,25 @@ input[type=text]:focus{border-color:#4f6840}
   }
 }
 
+
+/* V46：主操作按鈕同一列 */
+.action-row{
+  display:grid !important;
+  grid-template-columns:1fr 1fr 1fr !important;
+  gap:10px !important;
+  align-items:stretch !important;
+}
+.action-row > *{
+  width:100% !important;
+  margin:0 !important;
+  box-sizing:border-box !important;
+}
+@media(max-width:700px){
+  .action-row{
+    grid-template-columns:1fr !important;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -570,15 +589,26 @@ input[type=text]:focus{border-color:#4f6840}
       <div class="older" id="olderYears"></div>
 
       <div class="actions">
-        <button id="searchBtn" class="search" onclick="searchYear()">▶ 搭上時光機</button>
+        <div class="action-row">
+<button id="searchBtn" class="search" onclick="searchYear()">▶ 搭上時光機</button>
+<button id="stopBtn" class="stop" onclick="stopSearch()" disabled>✕ 中止搜尋</button>
 <button type="button" id="waybackDirectBtn" class="wayback-direct-btn" onclick="openWaybackDirect()">⚡ 快速查原始紀錄</button>
-        <button id="stopBtn" class="stop" onclick="stopSearch()" disabled>✕ 中止搜尋</button>
+</div>
       </div>
 
       <div id="result"></div>
 
 
-      <div class="note" id="rightsNotice" style="margin-top:22px;text-align:left;padding:18px 20px">
+      
+<div class="note" id="sitePurposeNote" style="margin-top:18px;text-align:left;padding:16px 18px">
+  <strong>本站說明</strong><br>
+  <span class="small" style="line-height:1.8">
+    「青春時光機」並非發明 Wayback Machine，而是利用 Internet Archive 公開保存的歷史網頁紀錄，
+    重新整理成更適合搜尋無名小站的操作介面。希望讓更多人能簡單地找回，那些年留在網路上的青春。
+  </span>
+</div>
+
+<div class="note" id="rightsNotice" style="margin-top:22px;text-align:left;padding:18px 20px">
         <div style="font-weight:700;margin-bottom:8px">⚖️ 歷史內容與權利聲明</div>
         <div class="small" style="line-height:1.9">
           本站為懷舊資料搜尋工具，協助使用者尋找 Internet Archive 公開保存的歷史網頁紀錄。
