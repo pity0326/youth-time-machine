@@ -40,6 +40,21 @@ module.exports=async function handler(req,res){
   if(!/^[1-4]$/.test(String(part||"")))
     return res.status(400).json({error:"分段不正確"});
 
+  const cfgManual=redisConfig();
+  const manualKey=`ytm:manualyear:v1:${String(username).toLowerCase()}:${type}:${year}`;
+  const manual=await cacheGet(cfgManual,manualKey);
+  if(manual?.verified===true){
+    return res.status(200).json({
+      found:true,
+      manual:true,
+      year,
+      part:Number(part),
+      days:[],
+      months:{},
+      calendarUrl:manual.calendarUrl||`https://web.archive.org/web/${year}0000000000*/wretch.cc/${type}/${String(username).toLowerCase()}`
+    });
+  }
+
   const quarterMonths={
     "1":[1,2,3],
     "2":[4,5,6],
