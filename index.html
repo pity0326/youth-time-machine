@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Youth Time Machine V59 wide-equal-actions + quick-original-tip -->
+<!-- Youth Time Machine V60 clickable-home + cassette-player-ui -->
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
@@ -552,13 +552,154 @@ input[type=text]:focus{border-color:#4f6840}
   }
 }
 
+
+/* V60：可點標題 + 復古卡帶播放器 */
+.home-title-btn{
+  appearance:none;
+  -webkit-appearance:none;
+  border:0;
+  background:transparent;
+  color:inherit;
+  font:inherit;
+  font-weight:inherit;
+  letter-spacing:inherit;
+  padding:0;
+  margin:0;
+  cursor:pointer;
+}
+.home-title-btn:hover{
+  opacity:.78;
+}
+.home-title-btn:active{
+  transform:translateY(1px);
+}
+
+.retro-player{
+  position:fixed;
+  left:16px;
+  bottom:16px;
+  z-index:9990;
+  width:170px;
+  padding:10px;
+  border:1px solid rgba(75,62,45,.28);
+  border-radius:8px;
+  background:rgba(240,226,194,.94);
+  color:#40362a;
+  box-shadow:0 5px 18px rgba(0,0,0,.12);
+  backdrop-filter:blur(3px);
+}
+.player-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  font-size:11px;
+  font-weight:800;
+  letter-spacing:.12em;
+  margin-bottom:7px;
+}
+.music-state{
+  font-size:10px;
+  opacity:.72;
+}
+.cassette-btn{
+  width:100%;
+  border:1px solid rgba(75,62,45,.3);
+  border-radius:7px;
+  background:#d5b777;
+  color:#3b3125;
+  padding:8px 9px 6px;
+  cursor:pointer;
+}
+.cassette-window{
+  height:38px;
+  border-radius:5px;
+  background:rgba(255,255,255,.36);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:18px;
+  position:relative;
+  overflow:hidden;
+}
+.reel{
+  width:23px;
+  height:23px;
+  border:4px dotted #5d503d;
+  border-radius:50%;
+  display:inline-block;
+  box-sizing:border-box;
+}
+.tape-line{
+  position:absolute;
+  width:58px;
+  height:2px;
+  background:rgba(74,61,45,.35);
+}
+.retro-player.playing .reel{
+  animation:reelSpin 1.2s linear infinite;
+}
+@keyframes reelSpin{
+  to{transform:rotate(360deg)}
+}
+.cassette-name{
+  margin-top:5px;
+  font-size:10px;
+  letter-spacing:.12em;
+  font-weight:700;
+}
+.track-name{
+  margin-top:7px;
+  min-height:18px;
+  font-size:11px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  text-align:center;
+}
+.player-controls{
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  gap:5px;
+  margin-top:7px;
+}
+.player-controls button{
+  height:28px;
+  border:1px solid rgba(75,62,45,.25);
+  border-radius:5px;
+  background:rgba(255,255,255,.5);
+  color:inherit;
+  cursor:pointer;
+  font-size:11px;
+}
+.volume-row{
+  display:grid;
+  grid-template-columns:auto 1fr;
+  gap:7px;
+  align-items:center;
+  margin-top:7px;
+  font-size:9px;
+  font-weight:800;
+}
+.volume-row input{
+  width:100%;
+  accent-color:#6f624f;
+}
+@media(max-width:700px){
+  .retro-player{
+    left:8px;
+    bottom:8px;
+    width:145px;
+    padding:8px;
+  }
+}
+
 </style>
 </head>
 <body>
 <div class="site">
   <header class="topbar">
     <div class="brand">
-      <h1>青春時光機</h1>
+      <h1><button type="button" class="home-title-btn" onclick="resetToHome()" title="回到首頁">青春時光機</button></h1>
       <div class="eng">YOUTH TIME MACHINE</div>
     </div>
     <div class="tagline">那些年，我們的青春都在這裡 ♥</div>
@@ -586,7 +727,41 @@ input[type=text]:focus{border-color:#4f6840}
       </section>
 
       <section class="side-card">
-        <div class="side-title">MUSIC ON</div>
+        
+<!-- V60 PLAYER START -->
+<div class="retro-player" id="retroPlayer">
+  <div class="player-head">
+    <span class="player-label">MUSIC</span>
+    <span id="musicState" class="music-state">OFF</span>
+  </div>
+
+  <button type="button" class="cassette-btn" id="cassetteBtn" onclick="toggleMusic()" aria-label="播放或暫停音樂">
+    <div class="cassette-window">
+      <span class="reel left-reel"></span>
+      <span class="tape-line"></span>
+      <span class="reel right-reel"></span>
+    </div>
+    <div class="cassette-name">青春時光機</div>
+  </button>
+
+  <div class="track-name" id="trackName">尚未放入音樂</div>
+
+  <div class="player-controls">
+    <button type="button" onclick="prevTrack()" aria-label="上一首">◀</button>
+    <button type="button" id="playPauseBtn" onclick="toggleMusic()" aria-label="播放暫停">▶</button>
+    <button type="button" onclick="nextTrack()" aria-label="下一首">▶▶</button>
+  </div>
+
+  <div class="volume-row">
+    <span>VOL</span>
+    <input id="musicVolume" type="range" min="0" max="1" step="0.05" value="0.25" oninput="setMusicVolume(this.value)">
+  </div>
+
+  <audio id="bgmAudio" preload="metadata"></audio>
+</div>
+<!-- V60 PLAYER END -->
+
+<div class="side-title">MUSIC ON</div>
         <div class="cassette"><div class="slot"></div></div>
         <div style="text-align:center;margin-top:8px;color:#9f8a5c;font-size:12px">♪ memory tape</div>
       </section>
@@ -1400,6 +1575,105 @@ function openWaybackDirect(){
   const url=`https://web.archive.org/web/${y}0000000000*/${target}`;
   window.open(url,"_blank","noopener,noreferrer");
 }
+
+const ytmPlaylist = [
+  { title:"Peaceful Drift", src:"/music/peaceful-drift.mp3" },
+  { title:"Color Of A Soul", src:"/music/color-of-a-soul.mp3" },
+  { title:"Still Life", src:"/music/still-life.mp3" },
+  { title:"Into The Mist", src:"/music/into-the-mist.mp3" }
+];
+
+let ytmTrackIndex = 0;
+let ytmMusicReady = false;
+
+function resetToHome(){
+  try{
+    if(activeController){ activeController.abort(); activeController=null; }
+  }catch{}
+
+  const u=document.getElementById("username");
+  const result=document.getElementById("result");
+  const status=document.getElementById("status");
+  const searchBtn=document.getElementById("searchBtn");
+  const stopBtn=document.getElementById("stopBtn");
+
+  if(u)u.value="";
+  if(result)result.innerHTML="";
+  if(status)status.textContent="";
+  if(searchBtn)searchBtn.disabled=false;
+  if(stopBtn)stopBtn.disabled=true;
+
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+
+function setupMusic(){
+  const audio=document.getElementById("bgmAudio");
+  if(!audio)return;
+
+  audio.volume=0.25;
+  audio.addEventListener("ended",nextTrack);
+  audio.addEventListener("play",()=>{
+    document.getElementById("retroPlayer")?.classList.add("playing");
+    const state=document.getElementById("musicState");
+    const pp=document.getElementById("playPauseBtn");
+    if(state)state.textContent="ON";
+    if(pp)pp.textContent="Ⅱ";
+  });
+  audio.addEventListener("pause",()=>{
+    document.getElementById("retroPlayer")?.classList.remove("playing");
+    const state=document.getElementById("musicState");
+    const pp=document.getElementById("playPauseBtn");
+    if(state)state.textContent="OFF";
+    if(pp)pp.textContent="▶";
+  });
+  loadTrack(0,false);
+}
+
+function loadTrack(index,autoplay=true){
+  const audio=document.getElementById("bgmAudio");
+  const name=document.getElementById("trackName");
+  if(!audio)return;
+
+  ytmTrackIndex=(index+ytmPlaylist.length)%ytmPlaylist.length;
+  const track=ytmPlaylist[ytmTrackIndex];
+
+  audio.src=track.src;
+  if(name)name.textContent=track.title;
+  ytmMusicReady=true;
+
+  if(autoplay){
+    audio.play().catch(()=>{
+      if(name)name.textContent=`${track.title}（請點播放）`;
+    });
+  }
+}
+
+function toggleMusic(){
+  const audio=document.getElementById("bgmAudio");
+  const name=document.getElementById("trackName");
+  if(!audio)return;
+
+  if(!ytmMusicReady)loadTrack(0,false);
+
+  if(audio.paused){
+    audio.play().catch(()=>{
+      if(name)name.textContent="尚未放入音樂檔";
+    });
+  }else{
+    audio.pause();
+  }
+}
+
+function prevTrack(){ loadTrack(ytmTrackIndex-1,true); }
+function nextTrack(){ loadTrack(ytmTrackIndex+1,true); }
+
+function setMusicVolume(v){
+  const audio=document.getElementById("bgmAudio");
+  if(audio)audio.volume=Number(v);
+}
+
+document.addEventListener("DOMContentLoaded",setupMusic);
+
 </script>
 
 
