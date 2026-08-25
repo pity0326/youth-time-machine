@@ -7,114 +7,132 @@
 <title>青春時光機｜找回你的無名小站</title>
 
 <style>
-* {
-  box-sizing: border-box;
-}
+<script>
+async function goBack() {
+  const username =
+    document.getElementById("username").value.trim();
 
-body {
-  margin: 0;
-  min-height: 100vh;
-  font-family: Arial, "Microsoft JhengHei", sans-serif;
-  background: linear-gradient(135deg, #fff8f0, #eef6ff);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-}
+  if (!username) {
+    alert("請先輸入你的無名帳號");
+    return;
+  }
 
-.card {
-  width: 100%;
-  max-width: 520px;
-  background: white;
-  padding: 38px 25px;
-  border-radius: 24px;
-  box-shadow: 0 10px 35px rgba(0,0,0,.08);
-  text-align: center;
-}
+  const type =
+    document.querySelector(
+      'input[name="type"]:checked'
+    ).value;
 
-h1 {
-  margin: 0 0 12px;
-  font-size: 34px;
-}
+  const oldUrl =
+    "http://www.wretch.cc/" +
+    type +
+    "/" +
+    encodeURIComponent(username);
 
-.subtitle {
-  color: #666;
-  line-height: 1.7;
-  margin-bottom: 26px;
-}
+  let result = document.getElementById("result");
 
-input {
-  width: 100%;
-  padding: 16px;
-  border: 2px solid #ddd;
-  border-radius: 12px;
-  font-size: 17px;
-  outline: none;
-}
+  if (!result) {
+    result = document.createElement("div");
+    result.id = "result";
+    result.style.marginTop = "25px";
+    result.style.lineHeight = "1.8";
+    document.querySelector(".card").appendChild(result);
+  }
 
-input:focus {
-  border-color: #555;
-}
+  result.innerHTML = "🔎 正在尋找你的青春紀錄...";
 
-.label {
-  margin: 22px 0 12px;
-  font-weight: bold;
-}
+  const api =
+    "https://web.archive.org/cdx/search/cdx" +
+    "?url=" + encodeURIComponent(oldUrl) +
+    "&output=json" +
+    "&filter=statuscode:200" +
+    "&fl=timestamp" +
+    "&collapse=digest";
 
-.choices {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 9px;
-}
+  try {
+    const response = await fetch(api);
 
-.choice input {
-  display: none;
-}
+    if (!response.ok) {
+      throw new Error("查詢失敗");
+    }
 
-.choice span {
-  display: block;
-  padding: 14px 5px;
-  border: 2px solid #e5e5e5;
-  border-radius: 12px;
-  cursor: pointer;
-  font-size: 15px;
-}
+    const data = await response.json();
 
-.choice input:checked + span {
-  border-color: #222;
-  background: #222;
-  color: white;
-}
+    if (!data || data.length <= 1) {
+      result.innerHTML =
+        "🥲 目前沒有找到公開保存的歷史紀錄。";
+      return;
+    }
 
-button {
-  width: 100%;
-  margin-top: 22px;
-  padding: 16px;
-  border: 0;
-  border-radius: 12px;
-  background: #222;
-  color: white;
-  font-size: 18px;
-  font-weight: bold;
-  cursor: pointer;
-}
+    const years = [];
 
-button:hover {
-  opacity: .85;
-}
+    for (let i = 1; i < data.length; i++) {
+      const timestamp = data[i][0];
+      const year = timestamp.substring(0, 4);
 
-.note {
-  margin-top: 22px;
-  color: #999;
-  font-size: 13px;
-  line-height: 1.6;
-}
+      if (!years.includes(year)) {
+        years.push(year);
+      }
+    }
 
-@media(max-width:420px) {
-  h1 {
-    font-size: 29px;
+    years.sort();
+
+    let html =
+      "<h3>🎉 找到你的青春了！</h3>" +
+      "<div>找到 " +
+      years.length +
+      " 個年份的紀錄：</div><br>";
+
+    years.forEach(year => {
+      const link =
+        "https://web.archive.org/web/" +
+        year +
+        "/" +
+        oldUrl;
+
+      html +=
+        '<a href="' +
+        link +
+        '" target="_blank" ' +
+        'style="display:inline-block;' +
+        'margin:5px;padding:9px 12px;' +
+        'border:1px solid #ddd;' +
+        'border-radius:10px;' +
+        'text-decoration:none;color:#222;">' +
+        year +
+        "</a>";
+    });
+
+    const firstYear = years[0];
+    const currentYear = new Date().getFullYear();
+    const age = currentYear - Number(firstYear);
+
+    html +=
+      "<br><br><strong>最早紀錄：" +
+      firstYear +
+      " 年</strong>";
+
+    html +=
+      "<div style='margin-top:8px;color:#666;'>" +
+      "你的無名青春距今大約 " +
+      age +
+      " 年 😆</div>";
+
+    result.innerHTML = html;
+
+  } catch (error) {
+    result.innerHTML =
+      "⚠️ 暫時無法讀取 Internet Archive，請稍後再試。";
   }
 }
+
+document
+  .getElementById("username")
+  .addEventListener("keydown", function(event) {
+    if (event.key === "Enter") {
+      goBack();
+    }
+  });
+</script>
 </style>
 </head>
 
