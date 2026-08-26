@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Youth Time Machine V64 dual-photo-rescue + tidy-empty-state -->
+<!-- Youth Time Machine V65 ride-counter-fixed + dual-photo-rescue -->
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
@@ -1439,6 +1439,9 @@ async function searchYear(forceRefresh=false){
   const resultEl=document.getElementById("result");
 
   if(!u){alert("請先輸入無名帳號");return}
+
+  // V65：每次主動搭上時光機只計一次搭乘次數
+  await incrementStats();
 
   if(activeController){try{activeController.abort()}catch{}}
   if(deepSearchController){try{deepSearchController.abort()}catch{}}
