@@ -1,58 +1,44 @@
-export default async function handler(req, res) {
-  const imageUrl =
-    "https://web.archive.org/web/20131227084040id_/http://f12.wretch.yimg.com/baby217/2/thumbs/t1060718966.jpg?s7bLZKL6zK3xbuyNQfSXU0Hyfgeteo.3JGD5zqHaEw_SWofadpUoEFaHypk5NXtp";
+module.exports=async function handler(req,res){
+  try{
+    const ts=String(req.query.ts||"").trim();
+    const raw=String(req.query.url||"").trim();
 
-  try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 10000);
+    if(!/^\d{14}$/.test(ts))
+      return res.status(400).send("Bad timestamp");
+    if(!/^https?:\/\/[^/]*wretch\.yimg\.com\//i.test(raw))
+      return res.status(400).send("Bad image URL");
 
-    const response = await fetch(imageUrl, {
-      headers: {
-        "User-Agent": "Mozilla/5.0"
-      },
-      redirect: "follow",
-      signal: controller.signal
-    });
+    const variants=[
+      `https://web.archive.org/web/${ts}id_/${raw}`,
+      `https://web.archive.org/web/${ts}im_/${raw}`,
+      `https://web.archive.org/web/${ts}/${raw}`
+    ];
 
-    clearTimeout(timer);
+    for(const target of variants){
+      const c=new AbortController();
+      const tm=setTimeout(()=>c.abort(),8000);
+      try{
+        const r=await fetch(target,{
+          headers:{"User-Agent":"YouthTimeMachine/photo-proxy-2.0","Accept":"image/avif,image/webp,image/*,*/*"},
+          redirect:"follow",signal:c.signal,cache:"no-store"
+        });
+        clearTimeout(tm);
+        if(!r.ok)continue;
+        const type=(r.headers.get("content-type")||"").toLowerCase();
+        if(!type.startsWith("image/"))continue;
+        const buf=Buffer.from(await r.arrayBuffer());
+        if(buf.length<100)continue;
 
-    if (!response.ok) {
-      return res.status(502).json({
-        ok: false,
-        status: response.status,
-        contentType: response.headers.get("content-type"),
-        finalUrl: response.url
-      });
+        res.setHeader("Content-Type",type.split(";")[0]||"image/jpeg");
+        res.setHeader("Cache-Control","public, max-age=86400, s-maxage=604800");
+        return res.status(200).send(buf);
+      }catch(e){
+        clearTimeout(tm);
+      }
     }
 
-    const contentType =
-      response.headers.get("content-type") || "";
-
-    if (!contentType.startsWith("image/")) {
-      return res.status(502).json({
-        ok: false,
-        error: "Wayback 回傳的不是圖片",
-        contentType,
-        finalUrl: response.url
-      });
-    }
-
-    const buffer = Buffer.from(
-      await response.arrayBuffer()
-    );
-
-    res.setHeader("Content-Type", contentType);
-    res.setHeader("Cache-Control", "public, max-age=3600");
-
-    return res.status(200).send(buffer);
-
-  } catch (error) {
-    return res.status(502).json({
-      ok: false,
-      error:
-        error.name === "AbortError"
-          ? "照片讀取超過 10 秒"
-          : error.message
-    });
+    return res.status(404).send("Archived image unavailable");
+  }catch{
+    return res.status(502).send("Photo proxy unavailable");
   }
-}
+};

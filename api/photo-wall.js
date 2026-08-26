@@ -1,32 +1,5 @@
-function redisConfig(){
-  const redisUrl=process.env.UPSTASH_REDIS_REST_URL||process.env.KV_REST_API_URL;
-  const redisToken=process.env.UPSTASH_REDIS_REST_TOKEN||process.env.KV_REST_API_TOKEN;
-  if(!redisUrl||!redisToken)return null;
-  return {baseUrl:redisUrl.replace(/\/$/,""),token:redisToken};
-}
-async function redisCall(cfg,path){
-  const r=await fetch(cfg.baseUrl+path,{headers:{Authorization:`Bearer ${cfg.token}`},cache:"no-store"});
-  if(!r.ok)throw new Error("Redis");
-  return r.json();
-}
-async function cacheGet(cfg,key){
-  if(!cfg)return null;
-  try{
-    const d=await redisCall(cfg,`/get/${encodeURIComponent(key)}`);
-    return d?.result?JSON.parse(d.result):null;
-  }catch{return null}
-}
-async function cacheSet(cfg,key,value,ttl){
-  if(!cfg)return;
-  try{
-    const raw=JSON.stringify(value);
-    await redisCall(cfg,`/set/${encodeURIComponent(key)}/${encodeURIComponent(raw)}`);
-    if(ttl)await redisCall(cfg,`/expire/${encodeURIComponent(key)}/${ttl}`);
-  }catch{}
-}
-
 module.exports=async function handler(req,res){
-  const diagnostic={stage:"start",entryPages:0,bookCount:0,albumPages:0,thumbCount:0,recoveredCount:0};
+  const diagnostic={stage:"start",htmlPages:0,htmlCandidates:0,cdxCandidates:0,recoveredCount:0};
   try{
     const username=String(req.query.username||"").trim();
     const year=String(req.query.year||"2013").trim();
@@ -34,135 +7,158 @@ module.exports=async function handler(req,res){
 
     if(!/^[A-Za-z0-9._-]{1,80}$/.test(username))
       return res.status(400).json({ok:false,error:"帳號格式不正確",diagnostic});
-    if(!/^\d{4}$/.test(year))
+    if(!/^(200[3-9]|201[0-4])$/.test(year))
       return res.status(400).json({ok:false,error:"年份格式不正確",diagnostic});
     if(ts&&!/^\d{14}$/.test(ts))ts="";
 
-    const cfg=redisConfig();
-    const cacheKey=`ytm:photos:prod:v1:${username.toLowerCase()}:${year}`;
-    const cached=await cacheGet(cfg,cacheKey);
-    if(cached?.ok===true&&Array.isArray(cached.photos)&&cached.photos.length){
-      return res.status(200).json({...cached,serverCache:true});
-    }
+    res.setHeader("Cache-Control","no-store, max-age=0");
 
-    async function timedFetch(url,timeout=8000,accept="*/*"){
+    async function timedFetch(url,timeout=7000,accept="*/*"){
       const c=new AbortController(),tm=setTimeout(()=>c.abort(),timeout);
       try{
         const r=await fetch(url,{
-          headers:{"User-Agent":"YouthTimeMachine/direct-album-1.0","Accept":accept},
+          headers:{"User-Agent":"YouthTimeMachine/photo-rescue-2.0","Accept":accept},
           redirect:"follow",signal:c.signal,cache:"no-store"
         });
-        clearTimeout(tm);return r;
-      }catch{clearTimeout(tm);return null}
+        clearTimeout(tm); return r;
+      }catch(e){clearTimeout(tm); return null}
     }
 
-    async function availability(url,stamp){
-      const api="https://archive.org/wayback/available?url="+encodeURIComponent(url)+"&timestamp="+encodeURIComponent(stamp);
-      const r=await timedFetch(api,5500,"application/json");
+    async function available(url,stamp){
+      const q="https://archive.org/wayback/available?url="+encodeURIComponent(url)+"&timestamp="+encodeURIComponent(stamp);
+      const r=await timedFetch(q,5000,"application/json");
       if(!r?.ok)return null;
       try{
         const d=await r.json(),h=d?.archived_snapshots?.closest;
-        return h?.available&&h.timestamp?String(h.timestamp):null;
+        return h?.available&&h.timestamp?{timestamp:String(h.timestamp),url:String(h.url||"")}:null;
       }catch{return null}
     }
 
     async function archivedHtml(url,stamp){
-      let useTs=stamp;
-      if(!useTs)useTs=await availability(url,`${year}1231`);
-      if(!useTs)return null;
-      const r=await timedFetch(`https://web.archive.org/web/${useTs}id_/${url}`,8000,"text/html,*/*");
+      const a=await available(url,stamp||`${year}1231`);
+      if(!a)return null;
+      const r=await timedFetch(`https://web.archive.org/web/${a.timestamp}id_/${url}`,7000,"text/html,*/*");
       if(!r?.ok)return null;
-      try{return {html:await r.text(),ts:useTs,url}}catch{return null}
+      try{return {html:await r.text(),timestamp:a.timestamp,url}}catch{return null}
     }
 
+    function normalizeUrl(u){
+      if(!u)return "";
+      u=String(u).replace(/&amp;/g,"&").trim();
+      if(u.startsWith("//"))u="http:"+u;
+      if(u.startsWith("/"))return "";
+      return u;
+    }
+
+    function looksLikeWretchImage(u){
+      return /(?:^|\/\/)[^/]*wretch\.yimg\.com\//i.test(u) &&
+             /\.(?:jpe?g|png|gif)(?:[?#]|$)/i.test(u);
+    }
+
+    const candidates=new Map();
+    function addCandidate(url,timestamp="",source="html"){
+      url=normalizeUrl(url);
+      if(!looksLikeWretchImage(url))return;
+      // Prefer thumbnail/image URLs belonging to this account.
+      if(!new RegExp("/"+username.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"/","i").test(url))return;
+      const cleanKey=url.replace(/^https:/i,"http:").replace(/[?#].*$/,"");
+      const prev=candidates.get(cleanKey);
+      if(!prev || (source==="cdx"&&prev.source!=="cdx"))
+        candidates.set(cleanKey,{imageUrl:url,timestamp,source});
+    }
+
+    // Route A: inspect archived album.php pages.
+    diagnostic.stage="album_html";
     const id=encodeURIComponent(username);
+    const pageUrls=[];
+    for(let book=1;book<=12;book++)
+      pageUrls.push(`http://www.wretch.cc/album/album.php?id=${id}&book=${book}`);
 
-    // IMPORTANT: Do not depend on /album/{username} root anymore.
-    // Start from actual Wretch album.php pages, which are the pages we previously proved can contain thumbnails.
-    diagnostic.stage="entry_album_pages";
-    const entryCandidates=[];
-    for(let book=1;book<=20;book++){
-      entryCandidates.push(`http://www.wretch.cc/album/album.php?id=${id}&book=${book}`);
-    }
-
-    const entryPages=[];
-    for(let i=0;i<entryCandidates.length;i+=4){
-      const batch=entryCandidates.slice(i,i+4);
-      const got=await Promise.all(batch.map(async url=>{
-        // First try the exact timestamp already found by year search.
-        let page=null;
-        if(ts)page=await archivedHtml(url,ts);
-        // If that book wasn't saved at the exact same moment, ask Wayback for its nearest snapshot.
-        if(!page){
-          const ownTs=await availability(url,`${year}1231`);
-          if(ownTs)page=await archivedHtml(url,ownTs);
-        }
-        return page;
-      }));
-      entryPages.push(...got.filter(Boolean));
-    }
-    diagnostic.entryPages=entryPages.length;
-
-    if(!entryPages.length){
-      diagnostic.stage="album_php_unavailable";
-      return res.status(200).json({ok:true,total:0,recoveredCount:0,photos:[],reason:diagnostic.stage,diagnostic});
-    }
-
-    // Discover additional book links from pages that actually loaded.
-    diagnostic.stage="discover_books";
-    const books=new Set();
-    for(const p of entryPages){
-      for(const m of p.html.matchAll(/album\.php\?[^"'<>]*\bid=([^&"'<>]+)[^"'<>]*\bbook=(\d{1,3})/gi)){
-        const n=Number(m[2]); if(n>=1&&n<=100)books.add(n);
-      }
-      for(const m of p.html.matchAll(/[?&]book=(\d{1,3})/gi)){
-        const n=Number(m[1]); if(n>=1&&n<=100)books.add(n);
+    for(let i=0;i<pageUrls.length;i+=4){
+      const pages=await Promise.all(pageUrls.slice(i,i+4).map(u=>archivedHtml(u,ts||`${year}1231`)));
+      for(const p of pages.filter(Boolean)){
+        diagnostic.htmlPages++;
+        for(const m of p.html.matchAll(/(?:src|href)=["']([^"']+)["']/gi))
+          addCandidate(m[1],p.timestamp,"html");
       }
     }
-    diagnostic.bookCount=books.size||entryPages.length;
-    diagnostic.albumPages=entryPages.length;
+    diagnostic.htmlCandidates=candidates.size;
 
-    // Extract thumbnails directly from these known-good album.php pages.
-    diagnostic.stage="extract_thumbnails";
-    let thumbs=[...entryPages.map(p=>p.html).join("\n").matchAll(/(?:src|href)=["']([^"']+)["']/gi)]
-      .map(m=>m[1].replace(/&amp;/g,"&"))
-      .filter(u=>/wretch\.yimg\.com/i.test(u)&&/\/thumbs\//i.test(u)&&/\.(?:jpg|jpeg|png|gif)(?:\?|$)/i.test(u))
-      .map(u=>u.startsWith("//")?"http:"+u:u);
-    thumbs=[...new Set(thumbs)].slice(0,160);
-    diagnostic.thumbCount=thumbs.length;
+    // Route B: query Internet Archive CDX image index directly.
+    // This can recover image records even when the saved album HTML is incomplete.
+    diagnostic.stage="cdx_images";
+    const cdxTargets=[
+      `*.wretch.yimg.com/${username}/*`,
+      `wretch.yimg.com/${username}/*`
+    ];
 
-    if(!thumbs.length){
-      diagnostic.stage="album_pages_loaded_but_no_thumbs";
-      return res.status(200).json({ok:true,total:0,recoveredCount:0,photos:[],reason:diagnostic.stage,diagnostic});
+    for(const target of cdxTargets){
+      const q="https://web.archive.org/cdx/search/cdx?url="+encodeURIComponent(target)+
+        "&from="+year+"0101&to="+year+"1231"+
+        "&output=json&fl=timestamp,original,mimetype,statuscode"+
+        "&filter=statuscode:200&filter=mimetype:image/.*"+
+        "&collapse=urlkey&limit=300&gzip=false";
+      const r=await timedFetch(q,8000,"application/json,text/plain,*/*");
+      if(!r?.ok)continue;
+      let data=null;
+      try{
+        const text=await r.text();
+        data=JSON.parse(text);
+      }catch{continue}
+      if(!Array.isArray(data)||data.length<2)continue;
+      for(let i=1;i<data.length;i++){
+        const row=data[i]||[];
+        const stamp=String(row[0]||"");
+        const original=String(row[1]||"");
+        addCandidate(original,stamp,"cdx");
+      }
+    }
+    diagnostic.cdxCandidates=[...candidates.values()].filter(x=>x.source==="cdx").length;
+
+    if(!candidates.size){
+      diagnostic.stage="no_image_records";
+      return res.status(200).json({ok:true,username,year,total:0,recoveredCount:0,photos:[],source:"none",diagnostic});
     }
 
-    // Verify image snapshots and build proxy URLs.
-    diagnostic.stage="verify_images";
-    async function verify(imageUrl){
-      const its=await availability(imageUrl,`${year}1231`);
-      return its?{imageUrl,ts:its}:null;
-    }
-
+    // Prefer candidates that already have a CDX timestamp. Verify HTML-only URLs through availability.
+    diagnostic.stage="verify";
+    const all=[...candidates.values()].slice(0,180);
     const found=[];
-    for(let i=0;i<thumbs.length;i+=10){
-      found.push(...(await Promise.all(thumbs.slice(i,i+10).map(verify))).filter(Boolean));
+
+    for(let i=0;i<all.length;i+=12){
+      const batch=all.slice(i,i+12);
+      const checked=await Promise.all(batch.map(async x=>{
+        if(/^\d{14}$/.test(x.timestamp))
+          return x;
+        const a=await available(x.imageUrl,`${year}1231`);
+        return a?{...x,timestamp:a.timestamp}:null;
+      }));
+      for(const x of checked.filter(Boolean)){
+        found.push(x);
+        if(found.length>=80)break;
+      }
+      if(found.length>=80)break;
     }
+
     diagnostic.recoveredCount=found.length;
-    diagnostic.stage=found.length?"success":"thumbnail_snapshots_unavailable";
+    diagnostic.stage=found.length?"success":"records_not_retrievable";
+
+    const sources=new Set(found.map(x=>x.source));
+    const source=sources.size>1?"mixed":(sources.values().next().value||"none");
 
     const photos=found.map((x,i)=>({
       index:i+1,
-      timestamp:x.ts,
-      proxyUrl:"/api/photo-image?ts="+encodeURIComponent(x.ts)+"&url="+encodeURIComponent(x.imageUrl)
+      timestamp:x.timestamp,
+      source:x.source,
+      originalUrl:x.imageUrl,
+      proxyUrl:"/api/photo-proxy?ts="+encodeURIComponent(x.timestamp)+"&url="+encodeURIComponent(x.imageUrl)
     }));
 
-    const result={ok:true,username,year,total:thumbs.length,recoveredCount:photos.length,photos};
-    if(photos.length){
-      await cacheSet(cfg,cacheKey,result,7776000);
-    }
-    return res.status(200).json(result);
-  }catch{
+    return res.status(200).json({
+      ok:true,username,year,total:candidates.size,recoveredCount:photos.length,photos,source,diagnostic
+    });
+  }catch(e){
     diagnostic.stage="unexpected_error";
-    return res.status(503).json({ok:false,error:"照片診斷暫時無法完成",diagnostic});
+    return res.status(503).json({ok:false,error:"照片搜尋暫時無法完成",diagnostic});
   }
 };
