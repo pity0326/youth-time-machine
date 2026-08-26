@@ -1,96 +1,1798 @@
-module.exports = async function handler(req, res) {
-  const redisUrl =
-    process.env.UPSTASH_REDIS_REST_URL ||
-    process.env.KV_REST_API_URL;
+<!doctype html>
+<!-- Youth Time Machine V64 dual-photo-rescue + tidy-empty-state -->
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>青春時光機｜找回你的無名小站</title>
+<style>
+*{box-sizing:border-box}
+:root{
+  --bg:#11110f;
+  --paper:#efe2c4;
+  --paper2:#f7ecd3;
+  --paper3:#e7d5ae;
+  --ink:#2f2920;
+  --cream:#f7e9ca;
+  --gold:#c4a261;
+  --green:#536a3d;
+  --pink:#c47a83;
+}
+body{
+  margin:0;
+  min-height:100vh;
+  color:#eee1c3;
+  font-family:"Microsoft JhengHei","PingFang TC",sans-serif;
+  background:
+    radial-gradient(circle at 15% 20%,rgba(255,255,255,.025),transparent 22%),
+    repeating-linear-gradient(0deg,rgba(255,255,255,.018) 0 1px,transparent 1px 4px),
+    var(--bg);
+}
+a{color:inherit}
+.site{
+  width:min(1180px,calc(100% - 28px));
+  margin:0 auto;
+  padding:28px 0 24px;
+}
+.topbar{
+  display:grid;
+  grid-template-columns:1fr auto;
+  align-items:end;
+  gap:20px;
+  margin-bottom:18px;
+}
+.brand h1{
+  margin:0;
+  font-family:"DFKai-SB","BiauKai","Kaiti TC","Microsoft JhengHei",serif;
+  font-size:48px;
+  font-weight:500;
+  letter-spacing:10px;
+  color:#f6ecd3;
+}
+.brand h1::before,.brand h1::after{content:"☆";color:#d2ad5d;font-size:.62em;vertical-align:middle}
+.brand .eng{margin:4px 0 0 70px;color:#d8b76c;letter-spacing:4px;font-size:14px}
+.tagline{align-self:start;color:#cbbd9e;font-family:"DFKai-SB","Microsoft JhengHei",serif;font-size:16px;padding-top:10px}
+.nav{
+  border:1px dashed #8e7545;
+  padding:12px 18px;
+  margin-bottom:18px;
+  color:#e4d4b0;
+  background:#181814;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.025);
+  letter-spacing:2px;
+}
+.nav span{margin-right:24px}
+.layout{
+  display:grid;
+  grid-template-columns:250px minmax(0,1fr);
+  gap:24px;
+  align-items:start;
+}
+.sidebar{
+  display:grid;
+  gap:16px;
+}
+.side-card{
+  background:#181814;
+  border:1px solid #79633a;
+  padding:18px;
+  color:#decda9;
+  position:relative;
+  box-shadow:0 10px 24px rgba(0,0,0,.18);
+}
+.side-card::after{
+  content:"";
+  position:absolute;inset:7px;
+  border:1px dashed rgba(201,167,101,.25);
+  pointer-events:none;
+}
+.side-title{
+  color:#d4b56a;
+  font-family:Georgia,serif;
+  letter-spacing:2px;
+  font-size:16px;
+  margin-bottom:12px;
+}
+.welcome{
+  font-family:"DFKai-SB","Microsoft JhengHei",serif;
+  line-height:1.9;
+  color:#e4d8bd;
+}
+.stats-box{text-align:center}
+.stats-main,.stats-sub{
+  color:#dac48d;
+  line-height:1.35;
+}
+.stats-main{font-size:16px;margin:8px 0 14px}
+.stats-sub{font-size:14px}
+.stats-main span,.stats-sub span{display:block;font-size:34px;color:#efd69a;font-family:Georgia,serif;margin-top:4px}
+.cassette{
+  height:82px;
+  border:1px solid #6e5b38;
+  margin-top:8px;
+  position:relative;
+  background:linear-gradient(#201f1a,#141410);
+}
+.cassette::before,.cassette::after{
+  content:"";position:absolute;top:25px;width:26px;height:26px;border:4px solid #b89a5d;border-radius:50%;
+}
+.cassette::before{left:38px}.cassette::after{right:38px}
+.cassette .slot{position:absolute;left:50%;top:30px;transform:translateX(-50%);width:44px;height:18px;border:1px solid #846d41}
+.paper{
+  position:relative;
+  background:
+    repeating-linear-gradient(0deg,rgba(91,74,43,.045) 0 1px,transparent 1px 31px),
+    var(--paper);
+  color:var(--ink);
+  border:1px solid #ab9871;
+  box-shadow:10px 12px 0 rgba(0,0,0,.23),0 16px 35px rgba(0,0,0,.22);
+  padding:42px 46px 38px 80px;
+  min-height:720px;
+}
+.paper::before{
+  content:"";
+  position:absolute;
+  left:20px;top:28px;bottom:28px;width:30px;
+  background:radial-gradient(circle,#27251f 0 5px,transparent 6px) center top/28px 44px repeat-y;
+  opacity:.9;
+}
+.paper::after{
+  content:"";
+  position:absolute;right:24px;top:18px;width:130px;height:28px;
+  background:rgba(194,158,87,.45);
+  transform:rotate(3deg);
+  box-shadow:0 0 0 1px rgba(90,70,35,.08);
+}
+.polaroid{
+  position:absolute;
+  right:34px;
+  top:-120px;
+  width:225px;
+  height:270px;
+  background:#f7f0de;
+  padding:14px 14px 44px;
+  transform:rotate(6deg);
+  box-shadow:0 10px 22px rgba(0,0,0,.28);
+  z-index:3;
+}
+.polaroid .photo{
+  width:100%;height:100%;
+  background:
+    radial-gradient(circle at 70% 30%,rgba(255,255,255,.65) 0 10px,transparent 11px),
+    linear-gradient(#1a2330 0 62%,#252d24 63% 100%);
+  position:relative;
+  overflow:hidden;
+}
+.polaroid .photo::after{
+  content:"";position:absolute;left:50%;bottom:22%;width:3px;height:54px;background:#d8c17e;
+  box-shadow:0 0 14px 5px rgba(232,200,119,.3);
+}
+.polaroid .caption{position:absolute;bottom:12px;left:0;right:0;text-align:center;font-family:"DFKai-SB","Microsoft JhengHei",serif;color:#5d513e;font-size:13px}
+.paper-title{
+  text-align:center;
+  font-family:"DFKai-SB","BiauKai","Kaiti TC","Microsoft JhengHei",serif;
+  font-size:24px;
+  margin:4px 0 10px;
+}
+.paper-sub{text-align:center;color:#6d6250;margin-bottom:26px;line-height:1.8}
+#statsWrap{display:none}
+.main-stats-mobile{display:none}
+input[type=text]{
+  width:100%;
+  padding:16px 18px;
+  border:2px solid #9e8e6d;
+  border-radius:7px;
+  background:#f7ecd4;
+  color:#322c22;
+  font-size:17px;
+  outline:none;
+}
+input[type=text]:focus{border-color:#4f6840}
+.account-help-btn{
+  display:block;margin:10px auto 0;border:0;background:transparent;color:#655b49;
+  text-decoration:underline;cursor:pointer;font-size:14px;
+}
+.help-panel{
+  display:none;margin:12px 0 0;padding:14px 16px;background:#ead9b7;border:1px dashed #a18d65;
+  border-radius:4px;color:#514838;font-size:14px;line-height:1.8;
+}
+.help-panel.show{display:block}
+.small{color:#776b56;font-size:13px;margin-top:8px}
+.label{
+  text-align:center;
+  margin:24px 0 12px;
+  font-family:"DFKai-SB","Microsoft JhengHei",serif;
+  font-size:18px;
+}
+.choices{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.choice input{display:none}
+.choice span{
+  display:block;text-align:center;padding:15px 8px;border:1px solid #ab9974;border-radius:7px;
+  background:#f4e8ce;cursor:pointer;line-height:1.6;
+}
+.choice input:checked+span{background:#25231d;color:#f4e7ca;border-color:#b7934c}
+.years{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+.year{
+  padding:11px 4px;border:1px solid #ad9d7b;border-radius:6px;background:#f5e9cf;color:#302a21;
+  cursor:pointer;font-weight:bold;
+}
+.year.active{background:#25231d;color:#f6e7c8;border-color:#b8944f}
+.older-toggle{
+  display:block;margin:12px auto 0;border:0;background:transparent;color:#645a47;text-decoration:underline;cursor:pointer;font-size:14px
+}
+.older{display:none;margin-top:12px;grid-template-columns:repeat(6,1fr);gap:8px}
+.older.show{display:grid}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:24px}
+.search,.stop{
+  padding:16px;border-radius:5px;border:1px solid #9f895e;font-size:17px;font-weight:bold;cursor:pointer
+}
+.search{background:#25231d;color:#f5e5c3}
+.stop{background:#e6d9bd;color:#6f6551}
+.stop:disabled,.search:disabled{opacity:.45;cursor:not-allowed}
+#result{margin-top:24px}
+.box{
+  text-align:left;background:#f5e9cf;border:1px solid #a9966d;border-radius:5px;padding:18px;line-height:1.7
+}
+.month{font-weight:bold;font-size:18px;margin:18px 0 7px;color:#4d653e}
+.day{
+  display:inline-block;margin:4px;padding:8px 10px;border:1px solid #aa9874;border-radius:5px;background:#f9efd8;color:#2e2921;text-decoration:none
+}
+.fallback,.mini-btn{
+  display:inline-block;margin-top:10px;padding:10px 12px;background:#25231d;color:#f5e7ca;border-radius:5px;text-decoration:none;border:0;cursor:pointer
+}
+.badge{font-size:12px;background:#dfd0ad;border-radius:999px;padding:2px 7px;margin-left:6px;color:#5d513e}
+.share-wrap{margin-top:18px;padding-top:18px;border-top:1px solid #c0ae87}
+.share-card{
+  padding:22px 18px;border-radius:5px;background:#ead9b6;border:1px dashed #9e8a61;text-align:center;
+  font-family:Georgia,"Microsoft JhengHei",serif
+}
+.share-card .big{font-size:22px;font-weight:bold;margin:12px 0;color:#4b633d}
+.share-card .meta{font-size:14px;color:#665a47;line-height:1.9}
+.share-card .brand{font-size:12px;color:#82735a;margin-top:16px;border-top:1px dashed #ad9972;padding-top:10px}
+.result-actions{display:flex;gap:8px;flex-wrap:wrap}
+.foot{
+  text-align:center;margin-top:28px;color:#82755e;font-size:12px;line-height:1.8
+}
+.credit{text-align:right;margin-top:14px;color:#b6a581;font-size:12px}
+@media(max-width:900px){
+  .layout{grid-template-columns:1fr}
+  .sidebar{grid-template-columns:repeat(3,1fr)}
+  .polaroid{top:-90px;right:22px;width:180px;height:220px}
+  .paper{padding-right:36px}
+}
+@media(max-width:650px){
+  .site{width:min(100% - 16px,1180px);padding-top:16px}
+  .topbar{grid-template-columns:1fr}
+  .brand h1{font-size:32px;letter-spacing:5px}
+  .brand .eng{margin-left:30px}
+  .tagline{display:none}
+  .nav{font-size:13px;white-space:nowrap;overflow:auto}
+  .layout{display:block}
+  .sidebar{display:none}
+  .paper{padding:34px 18px 28px 38px;min-height:0}
+  .paper::before{left:6px;width:24px;background-size:24px 40px}
+  .polaroid{display:none}
+  .choices{grid-template-columns:1fr 1fr 1fr}
+  .years{grid-template-columns:repeat(5,1fr);gap:7px}
+  .older{grid-template-columns:repeat(3,1fr)}
+  .actions{grid-template-columns:1fr}
+  .main-stats-mobile{
+    display:grid;
+    grid-template-columns:1fr 1px 1fr;
+    align-items:center;
+    background:#1b1a16;
+    color:#dcc797;
+    border:1px dashed #8d7240;
+    padding:14px 10px;
+    text-align:center;
+    margin:0 0 18px;
+    border-radius:2px;
+  }
+  .mobile-stat-item{min-width:0;padding:0 6px}
+  .mobile-stat-label{font-size:14px;white-space:nowrap;letter-spacing:.5px}
+  .mobile-stat-number{
+    display:block;
+    margin-top:4px;
+    color:#efd69a;
+    font-family:Georgia,serif;
+    font-size:25px;
+    line-height:1.15;
+    white-space:nowrap;
+  }
+  .mobile-stat-divider{width:1px;height:42px;background:#8d7240;opacity:.75}
+  .paper-title{
+    font-size:20px;
+    line-height:1.45;
+    white-space:nowrap;
+    letter-spacing:-.5px;
+  }
+}
+@media(max-width:390px){
+  .paper-title{font-size:18px}
+  .mobile-stat-label{font-size:13px}
+  .mobile-stat-number{font-size:23px}
+}
 
-  const redisToken =
-    process.env.UPSTASH_REDIS_REST_TOKEN ||
-    process.env.KV_REST_API_TOKEN;
+/* 青春照片救援 */
+.photo-rescue{margin-top:16px;padding-top:16px;border-top:1px dashed #b7a47d}
+.photo-rescue-btn{display:inline-block;padding:11px 14px;background:#536a3d;color:#fff4da;border:0;border-radius:5px;cursor:pointer;font-weight:bold}
+.photo-rescue-btn:disabled{opacity:.5;cursor:not-allowed}
+.photo-rescue-status{margin-top:12px;color:#6d6250;font-size:13px;line-height:1.7}
+.photo-rescue-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-top:16px}
+.memory-photo{display:block;background:#fffaf0;padding:7px 7px 22px;text-decoration:none;color:#5d513e;box-shadow:3px 5px 0 rgba(76,60,34,.14);transform:rotate(var(--r))}
+.memory-photo img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;background:#ddd0b3}
+.memory-photo small{display:block;text-align:center;margin-top:6px;font:11px Georgia,serif}
+@media(max-width:650px){.photo-rescue-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}}
+@media(max-width:390px){.photo-rescue-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
-  if (!redisUrl || !redisToken) {
-    return res.status(503).json({
-      error: "尚未設定搜尋次數資料庫"
-    });
+
+/* 青春照片牆 2.0 */
+.photo-rescue{
+  margin-top:20px;padding:20px 18px 22px;
+  border:1px solid #b39d72;border-radius:5px;
+  background:
+    repeating-linear-gradient(0deg,rgba(91,74,43,.035) 0 1px,transparent 1px 28px),
+    #eee0bf;
+  position:relative;overflow:hidden;
+}
+.photo-rescue::before{
+  content:"WRETCH ALBUM / MEMORY";
+  display:block;margin-bottom:12px;color:#6f614b;
+  font:12px Georgia,serif;letter-spacing:2px;
+}
+.photo-rescue-head{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.photo-rescue-title{font-family:"DFKai-SB","Microsoft JhengHei",serif;font-size:20px;color:#40372b}
+.photo-rescue-count{font:13px Georgia,"Microsoft JhengHei",serif;color:#725f3f;background:#e1cfaa;border:1px dashed #a78e61;padding:6px 10px;border-radius:999px}
+.photo-rescue-btn{box-shadow:2px 3px 0 rgba(54,45,29,.16)}
+.photo-rescue-status{margin-top:12px}
+.photo-rescue-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:18px;margin-top:20px;padding:5px}
+.memory-photo{
+  position:relative;background:#fffaf0;padding:8px 8px 28px;
+  box-shadow:4px 6px 10px rgba(73,57,31,.18);
+  transition:transform .16s ease,box-shadow .16s ease;
+}
+.memory-photo:hover{transform:rotate(0deg) translateY(-3px)!important;box-shadow:5px 9px 14px rgba(73,57,31,.24)}
+.memory-photo::before{
+  content:"";position:absolute;left:50%;top:-9px;transform:translateX(-50%) rotate(-2deg);
+  width:52px;height:18px;background:rgba(201,171,104,.58);z-index:2;
+}
+.memory-photo img{aspect-ratio:1/1;object-fit:cover;image-rendering:auto}
+.memory-photo small{font-size:10px;letter-spacing:1px;color:#746650}
+.photo-rescue-tip{
+  margin-top:18px;padding:10px 12px;border-top:1px dashed #b5a078;
+  color:#756751;font-size:12px;line-height:1.7
+}
+.photo-rescue-empty{padding:20px 4px;text-align:center;color:#776a54}
+@media(max-width:650px){
+  .photo-rescue{padding:16px 12px 18px}
+  .photo-rescue-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+  .memory-photo{padding:6px 6px 23px}
+}
+@media(max-width:390px){
+  .photo-rescue-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+
+
+/* V26：年份按鈕實際容器強制對齊 */
+.years{
+  display:grid !important;
+  grid-template-columns:repeat(6,minmax(0,1fr)) !important;
+  gap:8px !important;
+  width:100% !important;
+  align-items:stretch !important;
+}
+
+.years .year-btn{
+  width:100% !important;
+  min-width:0 !important;
+  height:42px !important;
+  padding:7px 4px !important;
+  margin:0 !important;
+  box-sizing:border-box !important;
+  font-size:14px !important;
+  line-height:1 !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+}
+
+/* 「找更早的青春」展開後也完全同規格 */
+#olderBox .years{
+  display:grid !important;
+  grid-template-columns:repeat(6,minmax(0,1fr)) !important;
+  gap:10px !important;
+}
+
+/* 手機一排 3 個，兩排剛好 6 年 */
+@media(max-width:700px){
+  .years,
+  #olderBox .years{
+    grid-template-columns:repeat(3,minmax(0,1fr)) !important;
+    gap:8px !important;
   }
 
-  const baseUrl = redisUrl.replace(/\/$/, "");
+  .years .year-btn{
+    height:40px !important;
+    font-size:13px !important;
+  }
+}
 
-  async function redis(path) {
-    const response = await fetch(baseUrl + path, {
-      headers: {
-        Authorization: `Bearer ${redisToken}`
-      },
-      cache: "no-store"
-    });
 
-    if (!response.ok) {
-      throw new Error(`Redis HTTP ${response.status}`);
+/* V40：搜尋中的即時時間 / 進度 / 數據 */
+.live-search-panel{
+  margin:12px 0;
+  padding:12px 14px;
+  border-radius:8px;
+  background:rgba(255,255,255,.35);
+  border:1px solid rgba(76,65,48,.18);
+}
+.live-search-title{
+  font-weight:700;
+  margin-bottom:6px;
+}
+.live-search-stats{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px 14px;
+  font-size:13px;
+  line-height:1.7;
+}
+.live-search-stats span{
+  white-space:nowrap;
+}
+.live-search-dot{
+  display:inline-block;
+  width:7px;
+  height:7px;
+  margin-right:6px;
+  border-radius:50%;
+  background:currentColor;
+  animation:ytmPulse 1.1s ease-in-out infinite;
+}
+@keyframes ytmPulse{
+  0%,100%{opacity:.3;transform:scale(.8)}
+  50%{opacity:1;transform:scale(1.15)}
+}
+
+
+/* V43：原始 Wayback 快速入口 */
+.wayback-direct-btn{
+  margin-left:8px;
+  padding:10px 14px;
+  border-radius:8px;
+  border:1px solid rgba(76,65,48,.25);
+  background:rgba(255,255,255,.55);
+  color:inherit;
+  cursor:pointer;
+  font:inherit;
+}
+.wayback-direct-btn:hover{filter:brightness(.97)}
+@media(max-width:640px){
+  .wayback-direct-btn{
+    margin-left:0;
+    margin-top:8px;
+    width:100%;
+  }
+}
+
+
+
+
+/* V58：桌機主操作區放寬、三鍵完全等比例 */
+.actions{
+  display:block !important;
+  width:100% !important;
+  margin-top:24px !important;
+}
+
+.action-row{
+  display:grid !important;
+  grid-template-columns:repeat(3,minmax(0,1fr)) !important;
+  gap:12px !important;
+  width:100% !important;
+  max-width:none !important;
+}
+
+.action-row #searchBtn,
+.action-row #stopBtn,
+.action-row #waybackDirectBtn{
+  width:100% !important;
+  height:52px !important;
+  min-height:52px !important;
+  margin:0 !important;
+  padding:0 12px !important;
+  box-sizing:border-box !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  border-radius:6px !important;
+  font-size:15px !important;
+  font-weight:700 !important;
+  line-height:1 !important;
+  white-space:nowrap !important;
+  box-shadow:none !important;
+}
+
+/* 清掉快速查按鈕舊版額外 margin */
+.action-row #waybackDirectBtn{
+  margin:0 !important;
+}
+
+/* 本站說明與權利聲明：同寬、同內距、左邊完全對齊 */
+#sitePurposeNote,
+#rightsNotice{
+  width:100% !important;
+  box-sizing:border-box !important;
+  margin-left:0 !important;
+  margin-right:0 !important;
+  padding:18px 20px !important;
+  text-align:left !important;
+}
+
+#sitePurposeNote{
+  margin-top:22px !important;
+  margin-bottom:12px !important;
+}
+
+#rightsNotice{
+  margin-top:0 !important;
+}
+
+@media(max-width:700px){
+  .action-row{
+    grid-template-columns:1fr !important;
+    gap:8px !important;
+  }
+  .action-row #searchBtn,
+  .action-row #stopBtn,
+  .action-row #waybackDirectBtn{
+    height:46px !important;
+    min-height:46px !important;
+    font-size:14px !important;
+  }
+}
+
+
+
+/* V61：標題回首頁 + 舊 MUSIC 卡帶整合播放器 */
+.home-title-btn{
+  appearance:none;
+  -webkit-appearance:none;
+  border:0;
+  background:transparent;
+  color:inherit;
+  font:inherit;
+  font-weight:inherit;
+  letter-spacing:inherit;
+  padding:0;
+  margin:0;
+  cursor:pointer;
+}
+.home-title-btn:hover{opacity:.78}
+.home-title-btn:active{transform:translateY(1px)}
+
+.music-card{overflow:hidden}
+.music-card-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:10px;
+  position:relative;
+  z-index:1;
+}
+.music-mini-toggle{
+  border:1px solid #6e5b38;
+  background:#171713;
+  color:#d4b56a;
+  width:30px;
+  height:26px;
+  cursor:pointer;
+  font-size:11px;
+}
+.cassette-player{
+  width:100%;
+  cursor:pointer;
+  display:block;
+  padding:0;
+  color:inherit;
+}
+.cassette-player .cassette-reel{
+  position:absolute;
+  top:25px;
+  width:26px;
+  height:26px;
+  border:4px solid #b89a5d;
+  border-radius:50%;
+  box-sizing:border-box;
+}
+.cassette-player .reel-left{left:38px}
+.cassette-player .reel-right{right:38px}
+.music-card.playing .cassette-reel{
+  animation:ytmCassetteSpin 1.15s linear infinite;
+}
+@keyframes ytmCassetteSpin{
+  to{transform:rotate(360deg)}
+}
+.memory-tape-line{
+  text-align:center;
+  margin-top:8px;
+  color:#9f8a5c;
+  font-size:12px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.music-controls{
+  position:relative;
+  z-index:1;
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:5px;
+  margin-top:10px;
+}
+.music-controls button{
+  height:28px;
+  border:1px solid #6e5b38;
+  background:#171713;
+  color:#c8ac71;
+  cursor:pointer;
+  font-size:10px;
+}
+.music-volume{
+  position:relative;
+  z-index:1;
+  display:grid;
+  grid-template-columns:auto 1fr;
+  gap:7px;
+  align-items:center;
+  margin-top:9px;
+  color:#9f8a5c;
+  font-size:9px;
+}
+.music-volume input{
+  width:100%;
+  accent-color:#b89a5d;
+}
+
+/* 手機：側欄本來會隱藏，所以另外顯示迷你卡帶播放器 */
+.mobile-music-player{
+  display:none;
+}
+
+@media(max-width:650px){
+  .mobile-music-player{
+    display:grid;
+    position:fixed;
+    left:10px;
+    right:10px;
+    bottom:10px;
+    z-index:9990;
+    grid-template-columns:54px minmax(0,1fr) 42px;
+    gap:10px;
+    align-items:center;
+    padding:9px 10px;
+    border:1px solid #79633a;
+    background:rgba(24,24,20,.96);
+    color:#decda9;
+    box-shadow:0 5px 18px rgba(0,0,0,.28);
+  }
+  .mobile-cassette-btn{
+    height:38px;
+    border:1px solid #6e5b38;
+    background:#171713;
+    display:flex;
+    align-items:center;
+    justify-content:space-around;
+    cursor:pointer;
+  }
+  .mobile-reel{
+    width:17px;
+    height:17px;
+    border:3px solid #b89a5d;
+    border-radius:50%;
+    display:block;
+  }
+  .mobile-music-player.playing .mobile-reel{
+    animation:ytmCassetteSpin 1.15s linear infinite;
+  }
+  .mobile-music-meta{
+    min-width:0;
+    display:flex;
+    flex-direction:column;
+    gap:3px;
+  }
+  .mobile-music-meta strong{
+    font-size:11px;
+    color:#d4b56a;
+    letter-spacing:1px;
+  }
+  .mobile-music-meta span{
+    font-size:11px;
+    color:#9f8a5c;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .mobile-play-btn{
+    height:34px;
+    border:1px solid #6e5b38;
+    background:#171713;
+    color:#d4b56a;
+    cursor:pointer;
+  }
+  body{padding-bottom:72px}
+}
+
+
+/* V64：照片救援雙路搜尋 + 空狀態整理 */
+.photo-rescue-empty-clean{
+  width:100%;
+  max-width:620px;
+  margin:10px auto 0;
+  padding:18px 20px !important;
+  text-align:left !important;
+  border-top:1px dashed #b5a078;
+  border-bottom:1px dashed #b5a078;
+  line-height:1.9;
+}
+.rescue-empty-title{
+  font-weight:700;
+  color:#554936;
+  margin-bottom:6px;
+}
+.rescue-empty-text{
+  color:#776a54;
+  font-size:13px;
+  line-height:1.9;
+}
+.memory-photo-missing{
+  min-height:145px;
+  cursor:default;
+}
+.memory-photo-missing-text{
+  min-height:105px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  color:#85765d;
+  font-size:11px;
+  line-height:1.6;
+  background:rgba(224,209,177,.55);
+  border:1px dashed #b8a47c;
+}
+
+</style>
+</head>
+<body>
+<div class="site">
+  <header class="topbar">
+    <div class="brand">
+      <h1><button type="button" class="home-title-btn" onclick="resetToHome()" title="回到首頁">青春時光機</button></h1>
+      <div class="eng">YOUTH TIME MACHINE</div>
+    </div>
+    <div class="tagline">那些年，我們的青春都在這裡 ♥</div>
+  </header>
+
+  <nav class="nav">
+    <span>首頁</span><span>相簿</span><span>網誌</span><span>留言板</span><span>好友</span><span>名片</span>
+  </nav>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <section class="side-card welcome">
+        <div class="side-title">WELCOME ♥</div>
+        找回那些年，<br>
+        留在網路上的青春。<br><br>
+        歡迎回來，<br>
+        你的青春還在。 ☺
+      </section>
+
+      <section class="side-card stats-box">
+        <div class="side-title">青春時光機人氣</div>
+        <div class="stats-main">累積搭乘 <span id="totalCount">0</span></div>
+        <div class="stats-sub">今日搭乘 <span id="todayCount">0</span></div>
+        <div id="statsWrap"></div>
+      </section>
+
+      <section class="side-card music-card" id="desktopMusicCard">
+        <div class="music-card-head">
+          <div class="side-title" style="margin:0">MUSIC <span id="musicState">OFF</span></div>
+          <button type="button" class="music-mini-toggle" id="playPauseBtn" onclick="toggleMusic()" aria-label="播放或暫停音樂">▶</button>
+        </div>
+
+        <button type="button" class="cassette cassette-player" id="cassetteBtn" onclick="toggleMusic()" aria-label="播放或暫停音樂">
+          <div class="slot"></div>
+          <span class="cassette-reel reel-left"></span>
+          <span class="cassette-reel reel-right"></span>
+        </button>
+
+        <div class="memory-tape-line">♪ <span id="trackName">memory tape</span></div>
+
+        <div class="music-controls">
+          <button type="button" onclick="prevTrack()" aria-label="上一首">◀</button>
+          <button type="button" onclick="toggleMusic()" aria-label="播放或暫停">▶ / Ⅱ</button>
+          <button type="button" onclick="nextTrack()" aria-label="下一首">▶▶</button>
+        </div>
+
+        <div class="music-volume">
+          <span>VOL</span>
+          <input id="musicVolume" type="range" min="0" max="1" step="0.05" value="0.25" oninput="setMusicVolume(this.value)">
+        </div>
+
+        <audio id="bgmAudio" preload="metadata"></audio>
+      </section>
+    </aside>
+    <div class="mobile-music-player" id="mobileMusicPlayer">
+      <button type="button" class="mobile-cassette-btn" onclick="toggleMusic()" aria-label="播放或暫停音樂">
+        <span class="mobile-reel"></span>
+        <span class="mobile-reel"></span>
+      </button>
+      <div class="mobile-music-meta">
+        <strong id="mobileMusicState">MUSIC OFF</strong>
+        <span id="mobileTrackName">memory tape</span>
+      </div>
+      <button type="button" class="mobile-play-btn" onclick="toggleMusic()" aria-label="播放或暫停">▶</button>
+    </div>
+
+
+    <main class="paper">
+      <div class="polaroid" aria-hidden="true">
+        <div class="photo"></div>
+        <div class="caption">回憶，從這裡開始… ♥</div>
+      </div>
+
+      <div class="paper-title">★ 還記得你的無名小站帳號嗎？</div>
+      <div class="paper-sub">找回那些年，留在網路上的青春。</div>
+
+      <div class="main-stats-mobile">
+        <div class="mobile-stat-item">
+          <div class="mobile-stat-label">♥ 累積搭乘</div>
+          <div class="mobile-stat-number" id="mobileTotal">—</div>
+        </div>
+        <div class="mobile-stat-divider"></div>
+        <div class="mobile-stat-item">
+          <div class="mobile-stat-label">今日搭乘</div>
+          <div class="mobile-stat-number" id="mobileToday">—</div>
+        </div>
+      </div>
+
+
+      <div class="note" style="margin:0 0 18px;padding:13px 16px;text-align:left">
+        <strong>⚠️ 時光機服務提醒</strong><br>
+  Internet Archive 近期查詢偶爾較慢，若第一次搜尋不到，<strong>不代表你的無名紀錄不存在</strong>，可以稍後再試。<br><br>
+  如果不想等待完整搜尋，也可以點選 <strong>「⚡ 快速查原始紀錄」</strong>，直接前往 Internet Archive 查找，通常會比「搭上時光機」更快看到結果。<br><br>
+  已成功搜尋到的紀錄也會逐步加入雲端快取，讓之後的查詢更快速、更穩定。</div>
+
+      <input id="username" type="text" placeholder="輸入你的無名帳號" autocomplete="off">
+
+      <button type="button" class="account-help-btn" onclick="toggleAccountHelp()">🤔 忘記以前的無名帳號？</button>
+
+      <div id="accountHelp" class="help-panel">
+        <strong>可以先從這些地方找找看：</strong><br>
+        ① 舊 Email／Yahoo 信箱搜尋「無名、wretch」<br>
+        ② 問以前常互相留言的朋友<br>
+        ③ 翻舊網址、部落格連結或瀏覽器書籤<br>
+        ④ 想想當年的即時通／遊戲／論壇 ID，很多人會用同一組帳號<br>
+        <span class="small">青春時光機無法直接反查帳號；記得帳號後，才能協助尋找公開保存紀錄。</span>
+      </div>
+
+      <div class="label">你想回去哪裡？</div>
+      <div class="choices">
+        <label class="choice"><input type="radio" name="type" value="album" checked><span>📷<br>相簿</span></label>
+        <label class="choice"><input type="radio" name="type" value="blog"><span>📝<br>網誌</span></label>
+        <label class="choice"><input type="radio" name="type" value="guestbook"><span>💬<br>留言板</span></label>
+      </div>
+
+      <div class="label">選擇年份，搭上時光機</div>
+      <div class="years" id="mainYears"></div>
+      <button class="older-toggle" onclick="toggleOlder()">🕰️ 找更早的青春</button>
+      <div class="older" id="olderYears"></div>
+
+      <div class="actions">
+        <div class="action-row">
+<button id="searchBtn" class="search" onclick="searchYear()">▶ 搭上時光機</button>
+<button id="stopBtn" class="stop" onclick="stopSearch()" disabled>✕ 中止搜尋</button>
+<button type="button" id="waybackDirectBtn" class="wayback-direct-btn" onclick="openWaybackDirect()" title="直接開啟 Internet Archive 原始紀錄">⚡ 快速查原始紀錄 ↗</button>
+</div>
+      </div>
+
+      <div id="result"></div>
+
+
+      
+
+<div class="note" id="sitePurposeNote">
+
+  <strong>📌 本站說明</strong><br>
+  <span class="small" style="line-height:1.8">
+    「青春時光機」並非發明 Wayback Machine，而是利用 Internet Archive 公開保存的歷史網頁紀錄，
+    重新整理成更適合搜尋無名小站的操作介面。希望讓更多人能更簡單地找回，那些年留在網路上的青春記憶。
+  </span>
+
+</div>
+
+<div class="note" id="rightsNotice">
+<div style="font-weight:700;margin-bottom:8px">⚖️ 歷史內容與權利聲明</div>
+        <div class="small" style="line-height:1.9">
+          本站為懷舊資料搜尋工具，協助使用者尋找 Internet Archive 公開保存的歷史網頁紀錄。
+          本站不主張歷史照片、文字及其他內容之著作權，相關權利仍歸原權利人所有。
+          若您為相關內容之權利人，認為本站呈現之內容涉及著作權、肖像權、隱私或其他權益，可提出內容移除申請。<br>
+          申請時請透過 Threads 聯絡本站作者，並提供無名帳號及相關頁面或照片資訊，以利確認處理。
+        </div>
+        <div class="result-actions" style="margin-top:12px">
+          <a class="mini-btn" target="_blank" rel="noopener" href="https://www.threads.com/@pity.0326">💬 聯絡作者申請移除</a>
+        </div>
+</div>
+
+
+      <div class="foot">
+        本站不會要求或保存你的無名密碼。<br>
+        歷史資料來自 Internet Archive 公開保存的網頁紀錄。
+      </div>
+      <div class="credit">青春時光機 · Created by <a href="https://www.threads.com/@pity.0326" target="_blank" rel="noopener">@pity.0326</a> ♥</div>
+    </main>
+  </div>
+</div>
+
+<script>
+let selectedYear="2013",activeController=null,timerId=null,startedAt=0,lastAlbumTimestamp="";
+function makeYearButton(y,container){const b=document.createElement("button");b.type="button";b.className="year"+(String(y)===selectedYear?" active":"");b.textContent=y;b.onclick=()=>{selectedYear=String(y);document.querySelectorAll(".year").forEach(x=>x.classList.remove("active"));b.classList.add("active")};container.appendChild(b)}
+const main=document.getElementById("mainYears");[2009,2010,2011,2012,2013,2014].forEach(y=>makeYearButton(y,main));
+const older=document.getElementById("olderYears");[2003,2004,2005,2006,2007,2008].forEach(y=>makeYearButton(y,older));
+function toggleOlder(){older.classList.toggle("show")}
+function stopSearch(){if(activeController)activeController.abort()}
+function timer(on){clearInterval(timerId);if(!on)return;startedAt=Date.now();timerId=setInterval(()=>{const e=document.getElementById("elapsed");if(e)e.textContent=((Date.now()-startedAt)/1000).toFixed(1)},100)}
+function key(u,t,y){return`ytm:v5:${u.toLowerCase()}:${t}:${y}`}
+function calendar(u,t){return`https://web.archive.org/web/*/http://www.wretch.cc/${t}/${encodeURIComponent(u)}`}
+function toggleAccountHelp(){document.getElementById("accountHelp").classList.toggle("show")}
+function buildShareCard(data,u,t,y){
+ const labels={album:"相簿",blog:"網誌",guestbook:"留言板"};
+ return `<div class="share-wrap"><div id="shareCard" class="share-card">
+ <div style="font-size:13px;letter-spacing:2px;color:#7c6d58">♥ YOUTH MEMORY / REWIND</div>
+ <div style="font-size:16px;margin-top:10px">🕰️ 我的青春時光機</div>
+ <div class="big">我在 ${y} 年找回 ${data.days.length} 個青春紀錄</div>
+ <div class="meta">📷 ${labels[t]} · ${Object.keys(data.months).length} 個月份有保存紀錄<br>♣ 無名帳號：${u}</div>
+ <div style="margin-top:14px;font-size:13px;color:#806f59">那些以為消失的日子，原來只是被時間藏起來了。</div>
+ <div class="brand">青春時光機 · Created by @pity.0326</div></div>
+ <div class="result-actions"><button type="button" class="mini-btn primary" onclick="downloadShareCard()">📸 產生我的青春卡片</button></div></div>`;
+}
+function downloadShareCard(){
+  const card=document.getElementById("shareCard");
+  if(!card)return;
+
+  const title=card.querySelector(".big").textContent;
+  const meta=card.querySelector(".meta").innerText;
+  const year=(title.match(/\d{4}/)||["青春"])[0];
+  const count=(title.match(/找回\s*(\d+)/)||["","0"])[1];
+  const lines=meta.split("\n").filter(Boolean);
+  const typeLine=lines[0]||"📷 相簿";
+  const accountLine=lines[1]||"♣ 無名帳號";
+
+  // 2x 高畫質輸出：實際 2160 × 2700，IG/Threads 壓縮後仍清楚
+  const SCALE=2;
+  const W=1080,H=1350;
+  const c=document.createElement("canvas");
+  c.width=W*SCALE;
+  c.height=H*SCALE;
+  const x=c.getContext("2d");
+  x.scale(SCALE,SCALE);
+
+  const kai='"BiauKai","Kaiti TC","DFKai-SB","KaiTi","STKaiti","Microsoft JhengHei",serif';
+  const sans='"PingFang TC","Microsoft JhengHei","Noto Sans TC",Arial,sans-serif';
+
+  // 背景：舊紙張
+  x.fillStyle="#eee3c9";
+  x.fillRect(0,0,W,H);
+  for(let i=0;i<8500;i++){
+    const a=Math.random()*0.028;
+    x.fillStyle=`rgba(86,65,36,${a})`;
+    x.fillRect(Math.random()*W,Math.random()*H,1,1);
+  }
+
+  // 外框
+  x.strokeStyle="#806f50";
+  x.lineWidth=3;
+  x.strokeRect(31,31,1018,1288);
+
+  // 頂部：舊個人網站標頭
+  x.fillStyle="#f3ead6";
+  x.fillRect(34,34,1012,96);
+  x.fillStyle="#2f6137";
+  x.textAlign="left";
+  x.font=`bold 42px ${kai}`;
+  x.fillText("青春時光機",68,84);
+  x.font='18px monospace';
+  x.fillText("YOUTH-TIME-MACHINE",70,111);
+
+  x.textAlign="right";
+  x.font=`24px ${sans}`;
+  x.fillText("網誌　相簿　好友　留言板",1000,88);
+
+  // 深綠分隔帶
+  x.fillStyle="#315f37";
+  x.fillRect(34,130,1012,42);
+
+  // 主體活頁紙
+  x.fillStyle="#f8f0dc";
+  x.fillRect(62,190,956,720);
+  x.strokeStyle="#b9aa89";
+  x.lineWidth=2;
+  x.strokeRect(62,190,956,720);
+
+  // 方格
+  x.strokeStyle="rgba(105,91,64,.12)";
+  x.lineWidth=1;
+  for(let yy=220;yy<910;yy+=32){
+    x.beginPath();x.moveTo(62,yy);x.lineTo(1018,yy);x.stroke();
+  }
+  for(let xx=94;xx<1018;xx+=32){
+    x.beginPath();x.moveTo(xx,190);x.lineTo(xx,910);x.stroke();
+  }
+
+  // 左側活頁孔
+  for(let yy=225;yy<885;yy+=54){
+    x.fillStyle="#8d7a56";
+    x.beginPath();x.arc(69,yy,9,0,Math.PI*2);x.fill();
+  }
+
+  // 撕紙標籤
+  x.fillStyle="#f3e8cc";
+  x.beginPath();
+  x.moveTo(112,228);x.lineTo(470,220);x.lineTo(484,271);x.lineTo(120,278);x.closePath();
+  x.fill();
+  x.fillStyle="#4c4234";
+  x.textAlign="left";
+  x.font=`36px ${kai}`;
+  x.fillText("★ 我的青春時光機",132,263);
+
+  // 主標題區：固定左側寬度，完全避開拍立得
+  x.fillStyle="#4b4032";
+  x.font=`58px ${kai}`;
+  x.fillText("我在",130,390);
+
+  x.fillStyle="#2f6137";
+  x.font=`bold 94px ${kai}`;
+  x.fillText(year,252,397);
+
+  x.fillStyle="#4b4032";
+  x.font=`58px ${kai}`;
+  x.fillText("年",472,390);
+
+  x.fillText("找回",130,500);
+  x.fillStyle="#c06c72";
+  x.font=`bold 86px ${kai}`;
+  x.fillText(count,270,507);
+
+  x.fillStyle="#4b4032";
+  x.font=`48px ${kai}`;
+  x.fillText("個青春紀錄",365,500);
+
+  // 綠色手繪分隔線
+  x.strokeStyle="#3e6b43";
+  x.lineWidth=3;
+  x.setLineDash([7,6]);
+  x.beginPath();x.moveTo(130,548);x.lineTo(555,548);x.stroke();
+  x.setLineDash([]);
+
+  // 左側資訊
+  x.fillStyle="#5d5140";
+  x.font=`29px ${sans}`;
+  x.fillText(typeLine,132,612);
+  x.fillText(accountLine,132,668);
+
+  // 右側拍立得，縮小並不會壓到文字
+  x.save();
+  x.translate(792,468);
+  x.rotate(0.055);
+
+  x.shadowColor="rgba(45,35,18,.19)";
+  x.shadowBlur=15;
+  x.shadowOffsetY=8;
+  x.fillStyle="#fffdf6";
+  x.fillRect(-168,-172,336,392);
+  x.shadowColor="transparent";
+
+  // 照片天空/草地
+  const sky=x.createLinearGradient(0,-138,0,92);
+  sky.addColorStop(0,"#73a8c5");
+  sky.addColorStop(.62,"#b7d0d5");
+  sky.addColorStop(1,"#d6d6a7");
+  x.fillStyle=sky;
+  x.fillRect(-141,-141,282,225);
+
+  x.fillStyle="#70904f";
+  x.beginPath();
+  x.moveTo(-141,54);
+  x.quadraticCurveTo(0,8,141,55);
+  x.lineTo(141,84);
+  x.lineTo(-141,84);
+  x.closePath();
+  x.fill();
+
+  // 小樹
+  x.fillStyle="#3f5f35";
+  x.fillRect(88,27,6,43);
+  x.beginPath();x.arc(91,24,22,0,Math.PI*2);x.fill();
+
+  x.fillStyle="#665640";
+  x.textAlign="center";
+  x.font='22px Georgia,serif';
+  x.fillText("those were the days",0,151);
+
+  x.restore();
+
+  // 膠帶
+  x.save();
+  x.translate(792,285);
+  x.rotate(.06);
+  x.fillStyle="rgba(207,176,103,.74)";
+  x.fillRect(-90,-17,180,34);
+  x.restore();
+
+  // 復古印章
+  x.save();
+  x.translate(598,732);
+  x.rotate(-.08);
+  x.strokeStyle="#315f37";
+  x.lineWidth=4;
+  x.beginPath();x.arc(0,0,72,0,Math.PI*2);x.stroke();
+  x.beginPath();x.arc(0,0,60,0,Math.PI*2);x.stroke();
+  x.fillStyle="#315f37";
+  x.textAlign="center";
+  x.font=`19px ${kai}`;
+  x.fillText("青春不打烊",0,-18);
+  x.font='bold 29px Georgia,serif';
+  x.fillText("Since",0,14);
+  x.font='bold 38px Georgia,serif';
+  x.fillText("2005",0,50);
+  x.restore();
+
+  // 右下小星星
+  x.fillStyle="#3c663e";
+  x.textAlign="center";
+  x.font='44px serif';
+  x.fillText("☆",945,790);
+
+  // 下半部留言紙
+  x.fillStyle="#f7eed9";
+  x.fillRect(93,950,894,250);
+  x.strokeStyle="#baa989";
+  x.lineWidth=2;
+  x.setLineDash([8,7]);
+  x.strokeRect(93,950,894,250);
+  x.setLineDash([]);
+
+  // 紙膠帶標題
+  x.fillStyle="#35613a";
+  x.fillRect(125,972,245,50);
+  x.fillStyle="#fff4df";
+  x.textAlign="left";
+  x.font=`bold 29px ${kai}`;
+  x.fillText("那些年的你…",151,1007);
+
+  // 懷舊手寫句
+  x.fillStyle="#4f4537";
+  x.font=`35px ${kai}`;
+  x.fillText("那些以為消失的日子，",137,1080);
+  x.fillText("原來只是被時間藏起來了。",137,1132);
+
+  // 愛心
+  x.fillStyle="#c66f74";
+  x.font='47px serif';
+  x.fillText("♡  ♡  ♡  ♡",700,1110);
+
+  // 底部像素小圖標
+  x.fillStyle="#365f3b";
+  x.fillRect(98,1225,68,68);
+  x.fillStyle="#f3e5c9";
+  x.fillRect(111,1240,42,36);
+  x.fillStyle="#365f3b";
+  x.fillRect(116,1251,7,7);
+  x.fillRect(140,1251,7,7);
+
+  // TODAY / TOTAL 舊人氣計數器
+  x.fillStyle="#315f37";
+  x.fillRect(194,1230,390,59);
+  x.fillStyle="#fff5dc";
+  x.font='22px monospace';
+  x.fillText(`♥ TODAY ${count}   TOTAL ${String(count).padStart(4,"0")}`,219,1267);
+
+  // 綠色吊牌
+  x.save();
+  x.translate(790,1230);
+  x.rotate(-.025);
+  x.fillStyle="#365f3b";
+  x.fillRect(-165,-29,330,58);
+  x.fillStyle="#f7edda";
+  x.textAlign="center";
+  x.font='21px Georgia,serif';
+  x.fillText("YOUTH MEMORY / REWIND",0,7);
+  x.restore();
+
+  // 製作者
+  x.fillStyle="#6d604e";
+  x.textAlign="right";
+  x.font=`20px ${sans}`;
+  x.fillText("青春時光機 · Created by @pity.0326",990,1322);
+
+  // 匯出 PNG
+  const a=document.createElement("a");
+  a.download=`青春時光機_${year}.png`;
+  a.href=c.toDataURL("image/png");
+  a.click();
+}
+function render(d,cache=false){const r=document.getElementById("result");
+if(d?.found && Array.isArray(d.days) && d.days.length){
+  const sameYear=d.days.filter(x=>String(x.timestamp||"").startsWith(String(selectedYear)));
+  const pick=(sameYear.length?sameYear:d.days).slice().sort((a,b)=>String(a.timestamp).localeCompare(String(b.timestamp))).pop();
+  if(pick?.timestamp) lastAlbumTimestamp=String(pick.timestamp);
+}if(!d.found){const u=document.getElementById("username").value.trim(),t=document.querySelector('input[name=type]:checked').value;r.innerHTML=`<div class="box"><strong>🔎 沒有找到 ${u} 在 ${selectedYear} 年的保存紀錄</strong><div class="small">請先確認帳號有沒有打錯字。若帳號正確，可能是這一年沒有被 Internet Archive 保存，也可以換其他年份或「相簿／網誌／留言板」再試試。</div><div class="result-actions"><button type="button" class="mini-btn primary" onclick="document.getElementById('username').focus()">確認帳號</button><button type="button" class="mini-btn" onclick="document.getElementById('result').innerHTML=''">換年份看看</button><a class="mini-btn" target="_blank" rel="noopener" href="${calendar(u,t)}">直接前往 Wayback</a></div></div>`;return}
+let h=`<div class="box"><strong>🎉 找到 ${selectedYear} 年的青春了！</strong>${cache?'<span class="badge">裝置快取</span>':''}${d.serverCache?'<span class="badge">雲端快取</span>':''}<div class="small">共找到 ${d.days.length} 個有保存紀錄的日期</div>`;
+if(d.partial){h+=`<div class="small" style="margin-top:8px">⚡ 已先顯示目前找到的紀錄；四個季度仍會繼續搜尋，完成後會自動合併。</div>`;}
+for(const m of Object.keys(d.months).sort()){h+=`<div class="month">${Number(m)} 月</div>`;for(const x of d.months[m])h+=`<a class="day" target="_blank" rel="noopener" href="${x.url}">${Number(x.day)} 日</a>`}
+h+=`<div class="small">點日期即可回到當天保存的無名頁面。</div>`;const u=document.getElementById("username").value.trim(),t=document.querySelector('input[name=type]:checked').value;
+if(t==="album"){h+=`<div class="photo-rescue"><div class="photo-rescue-head"><div><div class="photo-rescue-title">📷 我的青春照片牆</div><div class="photo-rescue-status" id="photoRescueStatus">有些照片沒有消失，只是被時間藏起來了。</div></div><button type="button" class="photo-rescue-btn" onclick="rescuePhotos()">找回照片</button></div><div id="photoRescueGrid" class="photo-rescue-grid"></div><div id="photoRescueTip" class="photo-rescue-tip" style="display:none">目前找回的是 Internet Archive 當年保存的小張縮圖。點照片可單獨開啟；手機可長按圖片儲存。</div></div>`;}
+h+=buildShareCard(d,u,t,selectedYear);h+=`</div>`;r.innerHTML=h}
+
+
+async function rescuePhotos(){
+  const u=document.getElementById("username").value.trim();
+  const status=document.getElementById("photoRescueStatus");
+  const grid=document.getElementById("photoRescueGrid");
+  const tip=document.getElementById("photoRescueTip");
+  const btn=document.querySelector(".photo-rescue-btn");
+  if(!u||!status||!grid||!btn)return;
+
+  btn.disabled=true;
+  btn.textContent="正在翻找…";
+  grid.innerHTML="";
+  if(tip)tip.style.display="none";
+
+  const started=Date.now();
+  let phaseTimer=setInterval(()=>{
+    const sec=Math.floor((Date.now()-started)/1000);
+    let phase="正在讀取當年的相簿頁…";
+    if(sec>=6) phase="正在改查 Internet Archive 圖片索引…";
+    if(sec>=14) phase="正在確認哪些舊照片仍可取回…";
+    status.innerHTML=`⏳ <strong>${phase}</strong><br><span class="small">已搜尋 ${sec} 秒。照片資料比網頁紀錄分散，可能需要多一點時間。</span>`;
+  },1000);
+
+  status.innerHTML="⏳ <strong>正在讀取當年的相簿頁…</strong><br><span class='small'>如果相簿頁沒有留下圖片，會自動改查圖片索引。</span>";
+
+  try{
+    const res=await fetch(`/api/photo-wall?username=${encodeURIComponent(u)}&year=${encodeURIComponent(selectedYear)}&ts=${encodeURIComponent(lastAlbumTimestamp||"")}`,{cache:"no-store"});
+    const d=await res.json();
+    clearInterval(phaseTimer);
+
+    if(!res.ok||!d.ok)throw new Error(d.error||"照片搜尋失敗");
+
+    if(!d.photos?.length){
+      status.innerHTML="🕰️ <strong>這次還沒有找到可顯示的照片</strong><br><span class='small'>已經檢查相簿頁與 Internet Archive 圖片索引；沒有找到不代表以前沒有照片，可能是當年的圖片檔沒有被完整保存。</span>";
+      grid.innerHTML=`<div class="photo-rescue-empty photo-rescue-empty-clean">
+        <div class="rescue-empty-title">照片紀錄可能比相簿頁更零散</div>
+        <div class="rescue-empty-text">
+          建議稍後再按右上角「再找一次」。<br>
+          如果之後成功找到，系統就能直接把仍可讀取的照片整理到這裡。
+        </div>
+      </div>`;
+      return;
     }
 
-    return response.json();
+    const sourceText=d.source==="cdx"?"圖片索引":d.source==="mixed"?"相簿頁＋圖片索引":"相簿頁";
+    status.innerHTML=`🎉 <strong>挖回 ${d.recoveredCount} 張青春照片！</strong> <span class="photo-rescue-count">${selectedYear} · ${u}</span> <span class="badge">${sourceText}</span>`;
+    if(tip)tip.style.display="block";
+
+    d.photos.forEach((p,i)=>{
+      const a=document.createElement("a");
+      a.className="memory-photo";
+      a.href=p.proxyUrl;
+      a.target="_blank";
+      a.rel="noopener";
+      a.title="點一下開啟照片";
+      a.style.setProperty("--r",((i%7)-3)*0.38+"deg");
+
+      const img=document.createElement("img");
+      img.loading="lazy";
+      img.src=p.proxyUrl;
+      img.alt=`${u} 的青春照片 ${i+1}`;
+
+      // 不再整張直接刪掉；失敗時留下「有紀錄但暫時讀不到」的提示。
+      img.onerror=()=>{
+        img.style.display="none";
+        a.classList.add("memory-photo-missing");
+        const missing=document.createElement("div");
+        missing.className="memory-photo-missing-text";
+        missing.innerHTML="📼<br>照片有保存紀錄<br>目前暫時讀不到";
+        a.insertBefore(missing,a.firstChild);
+      };
+
+      const cap=document.createElement("small");
+      cap.textContent=`MEMORY ${String(i+1).padStart(2,"0")}`;
+      a.append(img,cap);
+      grid.appendChild(a);
+    });
+
+    setTimeout(()=>grid.scrollIntoView({behavior:"smooth",block:"nearest"}),100);
+  }catch(e){
+    clearInterval(phaseTimer);
+    status.innerHTML="⏳ <strong>照片時光機暫時卡住了</strong><br><span class='small'>Internet Archive 目前可能比較忙，可以稍後按右上角「再找一次」。</span>";
+    grid.innerHTML=`<div class="photo-rescue-empty photo-rescue-empty-clean">
+      <div class="rescue-empty-text">這次沒有完成照片索引檢查，稍後重試即可。</div>
+    </div>`;
+  }finally{
+    clearInterval(phaseTimer);
+    btn.disabled=false;
+    btn.textContent="再找一次";
+  }
+}
+async function loadStats(){
+  try{
+    const res=await fetch("/api/counter",{cache:"no-store"});
+    const data=await res.json();
+    if(res.ok && typeof data.total==="number" && typeof data.today==="number"){
+      document.getElementById("totalCount").textContent=data.total.toLocaleString("zh-TW");
+      document.getElementById("todayCount").textContent=data.today.toLocaleString("zh-TW");
+      document.getElementById("statsWrap").style.display="block";
+    }
+  }catch{}
+}
+
+async function incrementStats(){
+  try{
+    const res=await fetch("/api/counter",{method:"POST",cache:"no-store"});
+    const data=await res.json();
+    if(res.ok && typeof data.total==="number" && typeof data.today==="number"){
+      document.getElementById("totalCount").textContent=data.total.toLocaleString("zh-TW");
+      document.getElementById("todayCount").textContent=data.today.toLocaleString("zh-TW");
+      document.getElementById("statsWrap").style.display="block";
+    }
+  }catch{}
+}
+
+
+async function warmNearbyYears(username,type,currentYear){
+  // 不影響目前畫面；只在背景慢慢建立相鄰年份的成功索引。
+  const minYear=2003,maxYear=2014;
+  const y=Number(currentYear);
+  const candidates=[y-1,y+1,y-2,y+2].filter(v=>v>=minYear&&v<=maxYear);
+
+  for(const yy of candidates){
+    try{
+      for(let part=1;part<=4;part++){
+        const controller=new AbortController();
+        const timer=setTimeout(()=>controller.abort(),4500);
+        try{
+          await fetch(`/api/year-part?username=${encodeURIComponent(username)}&type=${encodeURIComponent(type)}&year=${yy}&part=${part}`,{
+            signal:controller.signal,
+            cache:"no-store"
+          });
+        }catch{}
+        clearTimeout(timer);
+        // 刻意放慢，避免同時對 Internet Archive 發太多請求。
+        await new Promise(r=>setTimeout(r,250));
+      }
+    }catch{}
+  }
+}
+
+async function saveYearCloudCache(username,type,year,data){
+  if(!data?.found||!Array.isArray(data.days)||!data.days.length)return;
+  try{
+    await fetch("/api/year-cache",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({username,type,year,data}),
+      cache:"no-store"
+    });
+  }catch{}
+}
+
+async function getYearCloudCache(username,type,year){
+  try{
+    const r=await fetch(`/api/year-cache?username=${encodeURIComponent(username)}&type=${encodeURIComponent(type)}&year=${encodeURIComponent(year)}`,{
+      cache:"no-store"
+    });
+    if(!r.ok)return null;
+    const d=await r.json();
+    return d?.found?d:null;
+  }catch{return null}
+}
+
+
+function showBackgroundSearchStatus(done,total=4){
+  let el=document.getElementById("backgroundSearchStatus");
+  if(!el){
+    el=document.createElement("div");
+    el.id="backgroundSearchStatus";
+    el.className="note";
+    el.style.margin="12px 0";
+    el.style.padding="10px 14px";
+    const result=document.getElementById("result");
+    if(result)result.prepend(el);
   }
 
-  // Taiwan date, used for daily counter reset-by-key.
-  const formatter = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Taipei",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit"
+  if(done<total){
+    el.innerHTML=`⏳ <strong>仍在補找其他紀錄…</strong>
+      <span class="small">目前進度：${done} / ${total}。已找到的紀錄會先顯示，搜尋完成後會自動合併。</span>`;
+  }else{
+    el.innerHTML=`✅ <strong>全年搜尋完成</strong>
+      <span class="small">四個季度都已搜尋完成；目前畫面已合併這次找到的紀錄。</span>`;
+    setTimeout(()=>{
+      const current=document.getElementById("backgroundSearchStatus");
+      if(current)current.remove();
+    },4500);
+  }
+}
+
+let deepSearchController=null;
+
+async function searchYear(forceRefresh=false){
+  const u=(document.getElementById("username")?.value||"").trim();
+  const checkedType=document.querySelector('input[name="type"]:checked');
+  const selectType=document.getElementById("type");
+  const t=checkedType?.value || selectType?.value || "album";
+
+  const sb=document.getElementById("searchBtn");
+  const xb=document.getElementById("stopBtn");
+  const statusEl=document.getElementById("status");
+  const resultEl=document.getElementById("result");
+
+  if(!u){alert("請先輸入無名帳號");return}
+
+  if(activeController){try{activeController.abort()}catch{}}
+  if(deepSearchController){try{deepSearchController.abort()}catch{}}
+
+  activeController=new AbortController();
+  if(sb)sb.disabled=true;
+  if(xb)xb.disabled=false;
+
+  const map=new Map();
+  const startedAt=Date.now();
+  let currentPart=0,completedParts=0,liveTimer=null;
+
+  function ensureLivePanel(){
+    let panel=document.getElementById("liveSearchPanel");
+    if(!panel){
+      panel=document.createElement("div");
+      panel.id="liveSearchPanel";
+      panel.className="live-search-panel";
+      if(resultEl)resultEl.prepend(panel);
+      else if(statusEl?.parentElement)statusEl.parentElement.insertBefore(panel,statusEl.nextSibling);
+    }
+    return panel;
+  }
+  function updateLivePanel(msg=""){
+    const p=ensureLivePanel(); if(!p)return;
+    const sec=((Date.now()-startedAt)/1000).toFixed(1);
+    p.innerHTML=`<div class="live-search-title"><span class="live-search-dot"></span>${msg||`快速搜尋 ${selectedYear} 年…`}</div>
+      <div class="live-search-stats">
+        <span>⏱ <strong>${sec}</strong> 秒</span>
+        <span>📅 <strong>${map.size}</strong> 筆</span>
+        <span>🧭 <strong>${completedParts}/4</strong></span>
+        <span>🔎 <strong>${currentPart?`${currentPart}/4 季`:"雲端快取"}</strong></span>
+      </div>`;
+  }
+  function removeLive(){document.getElementById("liveSearchPanel")?.remove()}
+  function currentData(serverCache=false){
+    const days=[...map.values()].sort((a,b)=>String(a.date).localeCompare(String(b.date)));
+    const months={}; for(const x of days)(months[x.month]??=[]).push(x);
+    return {found:days.length>0,year:String(selectedYear),days,months,serverCache};
+  }
+  function mergeDays(days){
+    let changed=false;
+    for(const x of days||[]){
+      if(!x?.date)continue;
+      if(!map.has(x.date))changed=true;
+      map.set(x.date,x);
+    }
+    return changed;
+  }
+  function renderKeep(msg){
+    render(currentData());
+    updateLivePanel(msg);
+  }
+
+  try{
+    updateLivePanel(`正在確認 ${selectedYear} 年雲端快取…`);
+    liveTimer=setInterval(()=>updateLivePanel(),500);
+
+    // V45 核心：有共享雲端快取就直接結束，不再自動重搜。
+    if(!forceRefresh){
+      try{
+        const cloud=await getYearCloudCache(u,t,selectedYear);
+        if(cloud?.found&&Array.isArray(cloud.days)&&cloud.days.length){
+          mergeDays(cloud.days);
+          render(currentData(true));
+          if(statusEl){
+            statusEl.innerHTML=
+              `☁️ 已從雲端快取載入 ${cloud.days.length} 筆紀錄。`+
+              ` <button type="button" class="mini-btn" onclick="searchYear(true)">🔄 重新補找</button>`+
+              ` <button type="button" class="mini-btn" onclick="startDeepSearch()">🔎 背景完整補找</button>`;
+          }
+          return;
+        }
+      }catch{}
+    }
+
+    // 沒快取，或使用者主動按「重新補找」才真正掃 Wayback。
+    updateLivePanel(forceRefresh?`正在重新補找 ${selectedYear} 年…`:`沒有雲端快取，開始搜尋 ${selectedYear} 年…`);
+
+    for(let part=1;part<=4;part++){
+      currentPart=part;
+      updateLivePanel(`快速搜尋 ${selectedYear} 年第 ${part}/4 季…`);
+      try{
+        const r=await fetch(`/api/year-part?username=${encodeURIComponent(u)}&type=${encodeURIComponent(t)}&year=${selectedYear}&part=${part}&scan=fast`,{
+          signal:activeController.signal,cache:"no-store"
+        });
+        if(r.ok){
+          const d=await r.json();
+          if(d?.found&&mergeDays(d.days)){
+            renderKeep(`第 ${part}/4 季找到新紀錄，繼續快速搜尋…`);
+            try{await saveYearCloudCache(u,t,selectedYear,currentData())}catch{}
+          }
+        }
+      }catch(e){
+        if(e?.name==="AbortError")throw e;
+      }
+      completedParts=part;
+      updateLivePanel(`快速搜尋已完成 ${part}/4 季…`);
+    }
+
+    const data=currentData();
+    render(data);
+
+    if(data.found){
+      try{await saveYearCloudCache(u,t,selectedYear,data)}catch{}
+      if(statusEl)statusEl.innerHTML=
+        `⚡ ${selectedYear} 快速搜尋完成，目前找到 ${data.days.length} 筆。`+
+        ` <button type="button" class="mini-btn" onclick="searchYear(true)">🔄 重新補找</button>`+
+        ` <button type="button" class="mini-btn" onclick="startDeepSearch()">🔎 背景完整補找</button>`;
+    }else{
+      if(statusEl)statusEl.innerHTML=
+        `⚡ ${selectedYear} 快速搜尋完成，目前沒有找到紀錄。`+
+        ` <button type="button" class="mini-btn" onclick="searchYear(true)">🔄 再找一次</button>`+
+        ` <button type="button" class="mini-btn" onclick="startDeepSearch()">🔎 完整補找</button>`;
+    }
+
+  }catch(e){
+    if(statusEl)statusEl.textContent=e?.name==="AbortError"?"已中止搜尋，可直接換年份再搜尋。":"這次快速搜尋沒有完整完成。";
+  }finally{
+    if(liveTimer)clearInterval(liveTimer);
+    removeLive();
+    activeController=null;
+    if(sb)sb.disabled=false;
+    if(xb)xb.disabled=true;
+  }
+}
+
+async function startDeepSearch(){
+  const u=(document.getElementById("username")?.value||"").trim();
+  const checkedType=document.querySelector('input[name="type"]:checked');
+  const selectType=document.getElementById("type");
+  const t=checkedType?.value || selectType?.value || "album";
+  const statusEl=document.getElementById("status");
+
+  if(!u)return;
+  if(deepSearchController){try{deepSearchController.abort()}catch{}}
+  deepSearchController=new AbortController();
+
+  const yearAtStart=String(selectedYear);
+  const map=new Map();
+
+  try{
+    const cloud=await getYearCloudCache(u,t,yearAtStart);
+    for(const x of cloud?.days||[])if(x?.date)map.set(x.date,x);
+  }catch{}
+
+  if(statusEl)statusEl.textContent=`🔎 正在背景完整補找 ${yearAtStart}…你可以先看目前結果。`;
+
+  for(let part=1;part<=4;part++){
+    if(String(selectedYear)!==yearAtStart)break;
+    try{
+      const r=await fetch(`/api/year-part?username=${encodeURIComponent(u)}&type=${encodeURIComponent(t)}&year=${yearAtStart}&part=${part}&scan=deep`,{
+        signal:deepSearchController.signal,cache:"no-store"
+      });
+      if(r.ok){
+        const d=await r.json();
+        let changed=false;
+        for(const x of d?.days||[]){
+          if(!x?.date)continue;
+          if(!map.has(x.date))changed=true;
+          map.set(x.date,x);
+        }
+        if(changed){
+          const days=[...map.values()].sort((a,b)=>String(a.date).localeCompare(String(b.date)));
+          const months={};for(const x of days)(months[x.month]??=[]).push(x);
+          const data={found:days.length>0,year:yearAtStart,days,months};
+          render(data);
+          try{await saveYearCloudCache(u,t,yearAtStart,data)}catch{}
+        }
+      }
+      if(statusEl)statusEl.textContent=`🔎 背景補找 ${part}/4 完成，目前 ${map.size} 筆…`;
+    }catch(e){
+      if(e?.name==="AbortError")break;
+    }
+  }
+
+  if(String(selectedYear)===yearAtStart&&statusEl){
+    statusEl.textContent=`✅ ${yearAtStart} 背景完整補找完成，目前共 ${map.size} 筆。`;
+  }
+  deepSearchController=null;
+}
+document.getElementById("username").addEventListener("keydown",e=>{if(e.key==="Enter")searchYear()});
+loadStats();
+</script>
+
+<script>
+// 手機版同步顯示統計數字，不影響原本 loadStats/incrementStats 邏輯
+const __statsObserver = new MutationObserver(() => {
+  const t=document.getElementById("totalCount")?.textContent||"0";
+  const d=document.getElementById("todayCount")?.textContent||"0";
+  const mt=document.getElementById("mobileTotal"), md=document.getElementById("mobileToday");
+  if(mt) mt.textContent=t;
+  if(md) md.textContent=d;
+});
+const __tc=document.getElementById("totalCount"), __dc=document.getElementById("todayCount");
+if(__tc) __statsObserver.observe(__tc,{childList:true,subtree:true,characterData:true});
+if(__dc) __statsObserver.observe(__dc,{childList:true,subtree:true,characterData:true});
+</script>
+
+<script>
+document.addEventListener("click",function(e){
+  const btn=e.target.closest(".year-btn");
+  if(!btn)return;
+  const sb=document.getElementById("searchBtn");
+  const xb=document.getElementById("stopBtn");
+  if(sb)sb.disabled=false;
+  if(xb)xb.disabled=true;
+});
+
+function openWaybackDirect(){
+  const u=(document.getElementById("username")?.value||"").trim();
+  if(!u){
+    alert("請先輸入無名帳號");
+    return;
+  }
+
+  const checkedType=document.querySelector('input[name="type"]:checked');
+  const selectType=document.getElementById("type");
+  const t=checkedType?.value || selectType?.value || "album";
+  const y=String(selectedYear||"");
+
+  if(!/^(200[3-9]|201[0-4])$/.test(y)){
+    alert("請先選擇年份");
+    return;
+  }
+
+  // Use the Wretch form that has worked in our diagnostics.
+  const target=`wretch.cc/${t}/${u}`;
+  const url=`https://web.archive.org/web/${y}0000000000*/${target}`;
+  window.open(url,"_blank","noopener,noreferrer");
+}
+
+const ytmPlaylist = [];
+
+let ytmTrackIndex = 0;
+let ytmMusicReady = false;
+
+function resetToHome(){
+  try{
+    if(activeController){ activeController.abort(); activeController=null; }
+  }catch{}
+
+  const u=document.getElementById("username");
+  const result=document.getElementById("result");
+  const status=document.getElementById("status");
+  const searchBtn=document.getElementById("searchBtn");
+  const stopBtn=document.getElementById("stopBtn");
+
+  if(u)u.value="";
+  if(result)result.innerHTML="";
+  if(status)status.textContent="";
+  if(searchBtn)searchBtn.disabled=false;
+  if(stopBtn)stopBtn.disabled=true;
+
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+
+function setupMusic(){
+  const audio=document.getElementById("bgmAudio");
+  if(!audio)return;
+
+  audio.volume=0.25;
+  audio.addEventListener("ended",nextTrack);
+  audio.addEventListener("play",()=>{
+    document.getElementById("desktopMusicCard")?.classList.add("playing");
+    document.getElementById("mobileMusicPlayer")?.classList.add("playing");
+    const state=document.getElementById("musicState");
+    const mobileState=document.getElementById("mobileMusicState");
+    const pp=document.getElementById("playPauseBtn");
+    const mobilePlay=document.querySelector(".mobile-play-btn");
+    if(state)state.textContent="ON";
+    if(mobileState)mobileState.textContent="MUSIC ON";
+    if(pp)pp.textContent="Ⅱ";
+    if(mobilePlay)mobilePlay.textContent="Ⅱ";
   });
+  audio.addEventListener("pause",()=>{
+    document.getElementById("desktopMusicCard")?.classList.remove("playing");
+    document.getElementById("mobileMusicPlayer")?.classList.remove("playing");
+    const state=document.getElementById("musicState");
+    const mobileState=document.getElementById("mobileMusicState");
+    const pp=document.getElementById("playPauseBtn");
+    const mobilePlay=document.querySelector(".mobile-play-btn");
+    if(state)state.textContent="OFF";
+    if(mobileState)mobileState.textContent="MUSIC OFF";
+    if(pp)pp.textContent="▶";
+    if(mobilePlay)mobilePlay.textContent="▶";
+  });
+  loadTrack(0,false);
+}
 
-  const today = formatter.format(new Date());
-  const totalKey = "youth_time_machine:search_total";
-  const todayKey = `youth_time_machine:search_daily:${today}`;
+function loadTrack(index,autoplay=true){
+  const audio=document.getElementById("bgmAudio");
+  const name=document.getElementById("trackName");
+  const mobileName=document.getElementById("mobileTrackName");
+  if(!audio)return;
 
-  try {
-    if (req.method === "GET") {
-      const [totalData, todayData] = await Promise.all([
-        redis(`/get/${encodeURIComponent(totalKey)}`),
-        redis(`/get/${encodeURIComponent(todayKey)}`)
-      ]);
+  if(!ytmPlaylist.length){
+    if(name)name.textContent="memory tape";
+    if(mobileName)mobileName.textContent="memory tape";
+    ytmMusicReady=false;
+    return;
+  }
 
-      const total = Number(totalData.result || 0);
-      const todayCount = Number(todayData.result || 0);
+  ytmTrackIndex=(index+ytmPlaylist.length)%ytmPlaylist.length;
+  const track=ytmPlaylist[ytmTrackIndex];
 
-      res.setHeader("Cache-Control", "no-store, max-age=0");
-      return res.status(200).json({
-        total: Number.isFinite(total) ? total : 0,
-        today: Number.isFinite(todayCount) ? todayCount : 0,
-        date: today
-      });
-    }
+  audio.src=track.src;
+  if(name)name.textContent=track.title;
+  if(mobileName)mobileName.textContent=track.title;
+  ytmMusicReady=true;
 
-    if (req.method === "POST") {
-      const [totalData, todayData] = await Promise.all([
-        redis(`/incr/${encodeURIComponent(totalKey)}`),
-        redis(`/incr/${encodeURIComponent(todayKey)}`)
-      ]);
-
-      const total = Number(totalData.result || 0);
-      const todayCount = Number(todayData.result || 0);
-
-      // Daily keys only need short retention; total remains permanent.
-      // 3 days is enough to cover date boundaries while keeping Redis tidy.
-      try {
-        await redis(`/expire/${encodeURIComponent(todayKey)}/259200`);
-      } catch {}
-
-      res.setHeader("Cache-Control", "no-store, max-age=0");
-      return res.status(200).json({
-        total: Number.isFinite(total) ? total : 0,
-        today: Number.isFinite(todayCount) ? todayCount : 0,
-        date: today
-      });
-    }
-
-    res.setHeader("Allow", "GET, POST");
-    return res.status(405).json({
-      error: "Method not allowed"
-    });
-
-  } catch (error) {
-    return res.status(502).json({
-      error: "搜尋次數統計暫時無法使用"
+  if(autoplay){
+    audio.play().catch(()=>{
+      if(name)name.textContent=`${track.title}（請點播放）`;
+      if(mobileName)mobileName.textContent=`${track.title}（請點播放）`;
     });
   }
-};
+}
+
+function toggleMusic(){
+  const audio=document.getElementById("bgmAudio");
+  const name=document.getElementById("trackName");
+  const mobileName=document.getElementById("mobileTrackName");
+  if(!audio)return;
+
+  if(!ytmPlaylist.length){
+    if(name)name.textContent="♪ music coming soon";
+    if(mobileName)mobileName.textContent="music coming soon";
+    return;
+  }
+
+  if(!ytmMusicReady)loadTrack(0,false);
+
+  if(audio.paused){
+    audio.play().catch(()=>{
+      if(name)name.textContent="尚未放入音樂檔";
+    });
+  }else{
+    audio.pause();
+  }
+}
+
+function prevTrack(){ loadTrack(ytmTrackIndex-1,true); }
+function nextTrack(){ loadTrack(ytmTrackIndex+1,true); }
+
+function setMusicVolume(v){
+  const audio=document.getElementById("bgmAudio");
+  if(audio)audio.volume=Number(v);
+}
+
+document.addEventListener("DOMContentLoaded",setupMusic);
+
+</script>
+
+
+</body>
+</html>
