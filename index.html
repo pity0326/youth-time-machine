@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Youth Time Machine V62 merged-player-no-music-paths -->
+<!-- Youth Time Machine V64 dual-photo-rescue + tidy-empty-state -->
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
@@ -723,6 +723,45 @@ input[type=text]:focus{border-color:#4f6840}
   body{padding-bottom:72px}
 }
 
+
+/* V64：照片救援雙路搜尋 + 空狀態整理 */
+.photo-rescue-empty-clean{
+  width:100%;
+  max-width:620px;
+  margin:10px auto 0;
+  padding:18px 20px !important;
+  text-align:left !important;
+  border-top:1px dashed #b5a078;
+  border-bottom:1px dashed #b5a078;
+  line-height:1.9;
+}
+.rescue-empty-title{
+  font-weight:700;
+  color:#554936;
+  margin-bottom:6px;
+}
+.rescue-empty-text{
+  color:#776a54;
+  font-size:13px;
+  line-height:1.9;
+}
+.memory-photo-missing{
+  min-height:145px;
+  cursor:default;
+}
+.memory-photo-missing-text{
+  min-height:105px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  color:#85765d;
+  font-size:11px;
+  line-height:1.6;
+  background:rgba(224,209,177,.55);
+  border:1px dashed #b8a47c;
+}
+
 </style>
 </head>
 <body>
@@ -751,8 +790,8 @@ input[type=text]:focus{border-color:#4f6840}
 
       <section class="side-card stats-box">
         <div class="side-title">青春時光機人氣</div>
-        <div class="stats-main">累積訪客 <span id="totalCount">0</span></div>
-        <div class="stats-sub">今日訪客 <span id="todayCount">0</span></div>
+        <div class="stats-main">累積搭乘 <span id="totalCount">0</span></div>
+        <div class="stats-sub">今日搭乘 <span id="todayCount">0</span></div>
         <div id="statsWrap"></div>
       </section>
 
@@ -808,12 +847,12 @@ input[type=text]:focus{border-color:#4f6840}
 
       <div class="main-stats-mobile">
         <div class="mobile-stat-item">
-          <div class="mobile-stat-label">♥ 累積訪客</div>
+          <div class="mobile-stat-label">♥ 累積搭乘</div>
           <div class="mobile-stat-number" id="mobileTotal">—</div>
         </div>
         <div class="mobile-stat-divider"></div>
         <div class="mobile-stat-item">
-          <div class="mobile-stat-label">今日訪客</div>
+          <div class="mobile-stat-label">今日搭乘</div>
           <div class="mobile-stat-number" id="mobileToday">—</div>
         </div>
       </div>
@@ -1209,25 +1248,39 @@ async function rescuePhotos(){
   btn.textContent="正在翻找…";
   grid.innerHTML="";
   if(tip)tip.style.display="none";
-  status.innerHTML="⏳ 正在翻找你的青春照片…<br><span class='small'>舊照片需要逐張確認，第一次可能會稍微久一點。</span>";
+
+  const started=Date.now();
+  let phaseTimer=setInterval(()=>{
+    const sec=Math.floor((Date.now()-started)/1000);
+    let phase="正在讀取當年的相簿頁…";
+    if(sec>=6) phase="正在改查 Internet Archive 圖片索引…";
+    if(sec>=14) phase="正在確認哪些舊照片仍可取回…";
+    status.innerHTML=`⏳ <strong>${phase}</strong><br><span class="small">已搜尋 ${sec} 秒。照片資料比網頁紀錄分散，可能需要多一點時間。</span>`;
+  },1000);
+
+  status.innerHTML="⏳ <strong>正在讀取當年的相簿頁…</strong><br><span class='small'>如果相簿頁沒有留下圖片，會自動改查圖片索引。</span>";
 
   try{
     const res=await fetch(`/api/photo-wall?username=${encodeURIComponent(u)}&year=${encodeURIComponent(selectedYear)}&ts=${encodeURIComponent(lastAlbumTimestamp||"")}`,{cache:"no-store"});
     const d=await res.json();
+    clearInterval(phaseTimer);
+
     if(!res.ok||!d.ok)throw new Error(d.error||"照片搜尋失敗");
 
     if(!d.photos?.length){
-      status.innerHTML="🕰️ <strong>這次沒有成功連上舊相簿</strong><br><span class='small'>Internet Archive 目前可能比較忙，這不代表以前沒有照片。</span>";
-      grid.innerHTML=`<div class="photo-rescue-empty">
-        可以稍後再試，成功找回的照片紀錄會保存到雲端，之後同帳號、同年份再次搜尋會更穩定。
-        <div class="result-actions" style="justify-content:center;margin-top:12px">
-          <button type="button" class="mini-btn primary" onclick="rescuePhotos()">🔄 再找一次</button>
+      status.innerHTML="🕰️ <strong>這次還沒有找到可顯示的照片</strong><br><span class='small'>已經檢查相簿頁與 Internet Archive 圖片索引；沒有找到不代表以前沒有照片，可能是當年的圖片檔沒有被完整保存。</span>";
+      grid.innerHTML=`<div class="photo-rescue-empty photo-rescue-empty-clean">
+        <div class="rescue-empty-title">照片紀錄可能比相簿頁更零散</div>
+        <div class="rescue-empty-text">
+          建議稍後再按右上角「再找一次」。<br>
+          如果之後成功找到，系統就能直接把仍可讀取的照片整理到這裡。
         </div>
       </div>`;
       return;
     }
 
-    status.innerHTML=`🎉 <strong>挖回 ${d.recoveredCount} 張青春照片！</strong> <span class="photo-rescue-count">${selectedYear} · ${u}</span>${d.serverCache?' <span class="badge">雲端快取</span>':''}`;
+    const sourceText=d.source==="cdx"?"圖片索引":d.source==="mixed"?"相簿頁＋圖片索引":"相簿頁";
+    status.innerHTML=`🎉 <strong>挖回 ${d.recoveredCount} 張青春照片！</strong> <span class="photo-rescue-count">${selectedYear} · ${u}</span> <span class="badge">${sourceText}</span>`;
     if(tip)tip.style.display="block";
 
     d.photos.forEach((p,i)=>{
@@ -1243,24 +1296,36 @@ async function rescuePhotos(){
       img.loading="lazy";
       img.src=p.proxyUrl;
       img.alt=`${u} 的青春照片 ${i+1}`;
-      img.onerror=()=>a.remove();
+
+      // 不再整張直接刪掉；失敗時留下「有紀錄但暫時讀不到」的提示。
+      img.onerror=()=>{
+        img.style.display="none";
+        a.classList.add("memory-photo-missing");
+        const missing=document.createElement("div");
+        missing.className="memory-photo-missing-text";
+        missing.innerHTML="📼<br>照片有保存紀錄<br>目前暫時讀不到";
+        a.insertBefore(missing,a.firstChild);
+      };
 
       const cap=document.createElement("small");
       cap.textContent=`MEMORY ${String(i+1).padStart(2,"0")}`;
-
       a.append(img,cap);
       grid.appendChild(a);
     });
 
     setTimeout(()=>grid.scrollIntoView({behavior:"smooth",block:"nearest"}),100);
   }catch(e){
-    status.innerHTML="⏳ 照片時光機暫時卡住了。<br><span class='small'>Internet Archive 可能比較忙，稍後再按一次「找回照片」。</span>";
+    clearInterval(phaseTimer);
+    status.innerHTML="⏳ <strong>照片時光機暫時卡住了</strong><br><span class='small'>Internet Archive 目前可能比較忙，可以稍後按右上角「再找一次」。</span>";
+    grid.innerHTML=`<div class="photo-rescue-empty photo-rescue-empty-clean">
+      <div class="rescue-empty-text">這次沒有完成照片索引檢查，稍後重試即可。</div>
+    </div>`;
   }finally{
+    clearInterval(phaseTimer);
     btn.disabled=false;
     btn.textContent="再找一次";
   }
 }
-
 async function loadStats(){
   try{
     const res=await fetch("/api/counter",{cache:"no-store"});
