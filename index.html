@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Youth Time Machine V65 ride-counter-fixed + dual-photo-rescue -->
+<!-- Youth Time Machine V66 all-user-actions-count-as-rides -->
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
@@ -1237,6 +1237,9 @@ h+=buildShareCard(d,u,t,selectedYear);h+=`</div>`;r.innerHTML=h}
 
 
 async function rescuePhotos(){
+  // V66：每次主動使用「照片再找一次」也計為一次搭乘
+  await incrementStats();
+
   const u=document.getElementById("username").value.trim();
   const status=document.getElementById("photoRescueStatus");
   const grid=document.getElementById("photoRescueGrid");
@@ -1570,6 +1573,9 @@ async function searchYear(forceRefresh=false){
 }
 
 async function startDeepSearch(){
+  // V66：每次主動使用「背景完整補找」也計為一次搭乘
+  await incrementStats();
+
   const u=(document.getElementById("username")?.value||"").trim();
   const checkedType=document.querySelector('input[name="type"]:checked');
   const selectType=document.getElementById("type");
@@ -1651,7 +1657,10 @@ document.addEventListener("click",function(e){
   if(xb)xb.disabled=true;
 });
 
-function openWaybackDirect(){
+async function openWaybackDirect(){
+  // V66：每次主動使用「快速查原始紀錄」也計為一次搭乘
+  await incrementStats();
+
   const u=(document.getElementById("username")?.value||"").trim();
   if(!u){
     alert("請先輸入無名帳號");
