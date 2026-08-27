@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Youth Time Machine V66 all-user-actions-count-as-rides -->
+<!-- Youth Time Machine V68 photo-retry-upper-right + mobile-wrap-fix -->
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
@@ -762,6 +762,103 @@ input[type=text]:focus{border-color:#4f6840}
   border:1px dashed #b8a47c;
 }
 
+
+/* V67：手機照片牆空狀態避免長字串撐爆版面 */
+.photo-rescue,
+.photo-rescue-status,
+.photo-rescue-empty,
+.rescue-empty-title,
+.rescue-empty-text,
+.memory-photo-missing-text{
+  overflow-wrap:anywhere;
+  word-break:break-word;
+  white-space:normal;
+}
+
+@media(max-width:650px){
+  .photo-rescue{
+    overflow:hidden;
+  }
+
+  .photo-rescue-status,
+  .photo-rescue-empty,
+  .photo-rescue-empty-clean,
+  .rescue-empty-title,
+  .rescue-empty-text,
+  .memory-photo-missing-text{
+    width:100% !important;
+    max-width:100% !important;
+    min-width:0 !important;
+    box-sizing:border-box !important;
+    overflow-wrap:anywhere !important;
+    word-break:break-word !important;
+    white-space:normal !important;
+  }
+
+  .photo-rescue-empty-clean{
+    margin:8px 0 0 !important;
+    padding:14px 12px !important;
+    text-align:left !important;
+  }
+
+  .rescue-empty-title{
+    font-size:14px;
+    line-height:1.6;
+    margin-bottom:6px;
+  }
+
+  .rescue-empty-text{
+    font-size:12px;
+    line-height:1.8;
+  }
+
+  .photo-rescue-status .small{
+    display:block;
+    max-width:100%;
+    overflow-wrap:anywhere;
+    word-break:break-word;
+  }
+}
+
+
+/* V68：照片牆「再找一次」固定在標題區右上角 */
+.photo-rescue-head{
+  position:relative;
+  display:flex !important;
+  align-items:flex-start !important;
+  justify-content:space-between !important;
+  gap:12px;
+  width:100%;
+  box-sizing:border-box;
+}
+.photo-rescue-head > div:first-child{
+  flex:1 1 auto;
+  min-width:0;
+}
+.photo-rescue-btn{
+  flex:0 0 auto !important;
+  margin:0 0 0 auto !important;
+  align-self:flex-start !important;
+}
+
+@media(max-width:650px){
+  .photo-rescue-head{
+    display:grid !important;
+    grid-template-columns:minmax(0,1fr) auto !important;
+    align-items:start !important;
+    column-gap:10px !important;
+  }
+  .photo-rescue-btn{
+    grid-column:2 !important;
+    grid-row:1 / span 2 !important;
+    justify-self:end !important;
+    align-self:start !important;
+    width:auto !important;
+    min-width:76px !important;
+    margin:0 !important;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -1232,7 +1329,7 @@ let h=`<div class="box"><strong>🎉 找到 ${selectedYear} 年的青春了！</
 if(d.partial){h+=`<div class="small" style="margin-top:8px">⚡ 已先顯示目前找到的紀錄；四個季度仍會繼續搜尋，完成後會自動合併。</div>`;}
 for(const m of Object.keys(d.months).sort()){h+=`<div class="month">${Number(m)} 月</div>`;for(const x of d.months[m])h+=`<a class="day" target="_blank" rel="noopener" href="${x.url}">${Number(x.day)} 日</a>`}
 h+=`<div class="small">點日期即可回到當天保存的無名頁面。</div>`;const u=document.getElementById("username").value.trim(),t=document.querySelector('input[name=type]:checked').value;
-if(t==="album"){h+=`<div class="photo-rescue"><div class="photo-rescue-head"><div><div class="photo-rescue-title">📷 我的青春照片牆</div><div class="photo-rescue-status" id="photoRescueStatus">有些照片沒有消失，只是被時間藏起來了。</div></div><button type="button" class="photo-rescue-btn" onclick="rescuePhotos()">找回照片</button></div><div id="photoRescueGrid" class="photo-rescue-grid"></div><div id="photoRescueTip" class="photo-rescue-tip" style="display:none">目前找回的是 Internet Archive 當年保存的小張縮圖。點照片可單獨開啟；手機可長按圖片儲存。</div></div>`;}
+if(t==="album"){h+=`<div class="photo-rescue"><div class="photo-rescue-head"><div><div class="photo-rescue-title">📷 我的青春照片牆<button type="button" class="photo-rescue-btn" onclick="rescuePhotos()">找回照片</button></div><div class="photo-rescue-status" id="photoRescueStatus">有些照片沒有消失，只是被時間藏起來了。</div></div></div><div id="photoRescueGrid" class="photo-rescue-grid"></div><div id="photoRescueTip" class="photo-rescue-tip" style="display:none">目前找回的是 Internet Archive 當年保存的小張縮圖。點照片可單獨開啟；手機可長按圖片儲存。</div></div>`;}
 h+=buildShareCard(d,u,t,selectedYear);h+=`</div>`;r.innerHTML=h}
 
 
@@ -1273,10 +1370,10 @@ async function rescuePhotos(){
     if(!d.photos?.length){
       status.innerHTML="🕰️ <strong>這次還沒有找到可顯示的照片</strong><br><span class='small'>已經檢查相簿頁與 Internet Archive 圖片索引；沒有找到不代表以前沒有照片，可能是當年的圖片檔沒有被完整保存。</span>";
       grid.innerHTML=`<div class="photo-rescue-empty photo-rescue-empty-clean">
-        <div class="rescue-empty-title">照片紀錄可能比相簿頁更零散</div>
+        <div class="rescue-empty-title">目前沒有找到可顯示的照片</div>
         <div class="rescue-empty-text">
-          建議稍後再按右上角「再找一次」。<br>
-          如果之後成功找到，系統就能直接把仍可讀取的照片整理到這裡。
+          可能是當年的圖片沒有被完整保存。<br>
+          可以稍後再按右上角「再找一次」。
         </div>
       </div>`;
       return;
@@ -1321,7 +1418,7 @@ async function rescuePhotos(){
     clearInterval(phaseTimer);
     status.innerHTML="⏳ <strong>照片時光機暫時卡住了</strong><br><span class='small'>Internet Archive 目前可能比較忙，可以稍後按右上角「再找一次」。</span>";
     grid.innerHTML=`<div class="photo-rescue-empty photo-rescue-empty-clean">
-      <div class="rescue-empty-text">這次沒有完成照片索引檢查，稍後重試即可。</div>
+      <div class="rescue-empty-text">這次沒有完成照片搜尋，稍後再試一次即可。</div>
     </div>`;
   }finally{
     clearInterval(phaseTimer);
